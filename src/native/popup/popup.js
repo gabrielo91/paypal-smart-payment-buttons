@@ -200,9 +200,6 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
     const clean = cleanup();
     const postRobot = getPostRobot();
 
-    const stickinessID = getStorageID();
-    const pageUrl = `${ window.location.href.split('#')[0] }#${  HASH.CLOSE }`;
-
     const destroy = () => {
         return clean.all();
     };
@@ -287,6 +284,9 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
 
     replaceHash(HASH.LOADED);
     handleHash();
+
+    const stickinessID = getStorageID();
+    const pageUrl = `${ window.location.href.split('#')[0] }#${  HASH.CLOSE }`;
 
     appInstalledPromise.then(app => {
         sfvc = !sfvc ? sfvcOrSafari === true : true;
