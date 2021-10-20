@@ -161,12 +161,12 @@ function initNative({ props, components, config, payment, serviceData, restart }
     };
 
     const onFallbackCallback = (opts? : {| win? : CrossDomainWindowType | ProxyWindow, fallbackOptions? : NativeFallbackOptions |}) => {
-        const { win, fallbackOptions = getDefaultNativeFallbackOptions(), popup = false } = opts || {};
+        const { win, fallbackOptions = getDefaultNativeFallbackOptions() } = opts || {};
         
         return ZalgoPromise.try(() => {
 
             const result = setNativeOptOut(fallbackOptions);
-            const { fallback_reason } = fallbackOptions;
+            const { fallback_reason, popup = false } = fallbackOptions;
 
             getLogger().info(`native_message_onfallback`)
                 .track({
