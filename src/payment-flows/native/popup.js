@@ -14,7 +14,7 @@ import { type OnShippingChangeData } from '../../props/onShippingChange';
 import type { Payment } from '../types';
 
 
-import { isNativeOptedIn, type NativeFallbackOptions } from './eligibility';
+import { isNativeOptedIn, setNativeOptOut, getDefaultNativeFallbackOptions, type NativeFallbackOptions } from './eligibility';
 import { getNativeUrl, getNativePopupUrl, getNativeDomain, getNativePopupDomain, getNativeFallbackUrl } from './url';
 import { connectNative } from './socket';
 
@@ -186,6 +186,10 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     nativePopupWinProxy = paypal.postRobot.toProxyWindow(popup);
                 }
 
+                const cleanupPopupWin = clean.register(() => {
+                    return nativePopupWinProxy.close();
+                });
+
                 const nativePopupDomain = getNativePopupDomain({ props });
 
                 getLogger().info(`native_attempt_appswitch_popup_shown`)
@@ -219,27 +223,12 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     return unresolvedPromise();
                 });
 
-                const fallbackFromNative = (fallbackOptions? : NativeFallbackOptions) : ZalgoPromise<{| buttonSessionID : string |}> => {
+                const fallback = (fallbackOptions? : NativeFallbackOptions) : ZalgoPromise<{| buttonSessionID : string |}> => {
+                    cleanupPopupWin.cancel();
                     return onFallback({
                         win: nativePopupWinProxy,
                         fallbackOptions
                     });
-                };
-
-                const fallbackForWebDetect = () : ZalgoPromise<{| buttonSessionID : string |}> => {
-                    return onFallback({
-                        win: nativePopupWinProxy
-                    });
-                };
-
-                const fallback = (fallbackOptions? : NativeFallbackOptions) : ZalgoPromise<{| buttonSessionID : string |}> => {
-                    const { type, skip_native_duration, fallback_reason } = fallbackOptions || {};
-
-                    if (type || skip_native_duration || fallback_reason) {
-                        return fallbackFromNative(fallbackOptions);
-                    } else {
-                        return fallbackForWebDetect();
-                    }
                 };
 
                 const detectAppSwitch = once(() : ZalgoPromise<void> => {
@@ -509,7 +498,17 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                         .track({
                             [FPTI_KEY.TRANSITION]: FPTI_TRANSITION.NATIVE_ON_FALLBACK
                         }).flush();
-                    fallback(fallbackOptions);
+                        
+                    const { options = getDefaultNativeFallbackOptions() } = fallbackOptions || {};
+                    const result = setNativeOptOut(options);
+                    const { fallback_reason } = options;
+
+                    getLogger().info(`native_message_onfallback`)
+                        .track({
+                            [FPTI_KEY.TRANSITION]:               FPTI_TRANSITION.NATIVE_ON_FALLBACK,
+                            [FPTI_CUSTOM_KEY.TRANSITION_TYPE]:   result ? FPTI_TRANSITION.NATIVE_OPT_OUT :  FPTI_TRANSITION.NATIVE_FALLBACK,
+                            [FPTI_CUSTOM_KEY.TRANSITION_REASON]: fallback_reason || ''
+                        }).flush();
                 });
 
                 const onCompleteListener = postRobotOnceProxy(POST_MESSAGE.ON_COMPLETE, { proxyWin: nativePopupWinProxy, domain: nativePopupDomain }, () => {

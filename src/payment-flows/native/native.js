@@ -174,7 +174,7 @@ function initNative({ props, components, config, payment, serviceData, restart }
                     [FPTI_CUSTOM_KEY.TRANSITION_TYPE]:   result ? FPTI_TRANSITION.NATIVE_OPT_OUT :  FPTI_TRANSITION.NATIVE_FALLBACK,
                     [FPTI_CUSTOM_KEY.TRANSITION_REASON]: fallback_reason || ''
                 }).flush();
-
+            
             fallbackToWebCheckout(win);
             return { buttonSessionID };
         });
