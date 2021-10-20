@@ -255,7 +255,7 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
         }
         case HASH.ON_FALLBACK: {
             const { type, skip_native_duration, fallback_reason } = parseQuery(queryString);
-            sendToParent(MESSAGE.ON_FALLBACK, { type, skip_native_duration, fallback_reason });
+            sendToParent(MESSAGE.ON_FALLBACK, { type, skip_native_duration, fallback_reason, popup: true });
             window.location.replace(fallbackURL);
             break;
         }

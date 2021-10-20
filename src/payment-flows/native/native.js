@@ -161,7 +161,7 @@ function initNative({ props, components, config, payment, serviceData, restart }
     };
 
     const onFallbackCallback = (opts? : {| win? : CrossDomainWindowType | ProxyWindow, fallbackOptions? : NativeFallbackOptions |}) => {
-        const { win, fallbackOptions = getDefaultNativeFallbackOptions() } = opts || {};
+        const { win, fallbackOptions = getDefaultNativeFallbackOptions(), popup = false } = opts || {};
         
         return ZalgoPromise.try(() => {
 
@@ -174,8 +174,10 @@ function initNative({ props, components, config, payment, serviceData, restart }
                     [FPTI_CUSTOM_KEY.TRANSITION_TYPE]:   result ? FPTI_TRANSITION.NATIVE_OPT_OUT :  FPTI_TRANSITION.NATIVE_FALLBACK,
                     [FPTI_CUSTOM_KEY.TRANSITION_REASON]: fallback_reason || ''
                 }).flush();
-            
-            fallbackToWebCheckout(win);
+
+            if (!popup) {
+                fallbackToWebCheckout(win);
+            }
             return { buttonSessionID };
         });
     };
