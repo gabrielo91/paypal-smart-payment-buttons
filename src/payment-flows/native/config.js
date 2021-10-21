@@ -1,7 +1,6 @@
 /* @flow */
 
 import { ENV, FUNDING } from '@paypal/sdk-constants/src';
-import { getDomain } from 'cross-domain-utils/src';
 
 type EnvConfig = {|
     [ $Values<typeof ENV> ] : string
@@ -16,6 +15,7 @@ export const SUPPORTED_FUNDING : $ReadOnlyArray<$Values<typeof FUNDING>> = [
     FUNDING.VENMO
 ];
 
+// Native domain needs to be either www.paypal.com or www.sandbox.paypal.com to app switch
 export const NATIVE_DOMAIN : EnvConfig = {
     [ ENV.TEST ]:       'https://www.paypal.com',
     [ ENV.LOCAL ]:      'https://www.paypal.com',
@@ -27,7 +27,7 @@ export const NATIVE_DOMAIN : EnvConfig = {
 // Popup domain needs to be different than native domain for app switch to work on iOS
 export const HISTORY_NATIVE_POPUP_DOMAIN : EnvConfig = {
     [ ENV.TEST ]:       'https://history.paypal.com',
-    [ ENV.LOCAL ]:      'http://localhost:8001',
+    [ ENV.LOCAL ]:      'http://localhost:8001', // necessary to simulate production env
     [ ENV.STAGE ]:      'https://history.paypal.com',
     [ ENV.SANDBOX ]:    'https://history.paypal.com',
     [ ENV.PRODUCTION ]: 'https://history.paypal.com'
@@ -35,7 +35,7 @@ export const HISTORY_NATIVE_POPUP_DOMAIN : EnvConfig = {
 
 export const MOBILE_NATIVE_POPUP_DOMAIN : EnvConfig = {
     [ ENV.TEST ]:       'https://mobile.paypal.com',
-    [ ENV.LOCAL ]:      getDomain(),
+    [ ENV.LOCAL ]:      'http://localhost:8001', // necessary to simulate production env
     [ ENV.STAGE ]:      'https://mobile.paypal.com',
     [ ENV.SANDBOX ]:    'https://mobile.paypal.com',
     [ ENV.PRODUCTION ]: 'https://mobile.paypal.com'
