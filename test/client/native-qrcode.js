@@ -163,7 +163,7 @@ describe('native qrcode cases', () => {
                                     },
                                     venmo: {
                                         eligibility:         false,
-                                        ineligibilityReason: 'isUserAgentEligible,isBrowserMobileAndroid,isEnvEligible'
+                                        ineligibilityReason: 'isEnvEligible'
                                     }
                                 }
                             }
