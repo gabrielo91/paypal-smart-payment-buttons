@@ -185,7 +185,7 @@ export function isNativePaymentEligible({ props, payment } : IsPaymentEligibleOp
         return false;
     }
 
-    // For Venmo desktop, ignore failing eligibility if the given reasons are returned from NativeEligibility
+    // For Venmo desktop
     if (platform && platform === PLATFORM.DESKTOP) {
         return nativeEligibilityResults && nativeEligibilityResults[fundingSource]
             ? nativeEligibilityResults[fundingSource].eligibility
