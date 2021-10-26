@@ -245,7 +245,7 @@ describe('native qrcode cases', () => {
                 }).expectCalls();
     
                 const orderID = generateOrderID();
-                const payerID = 'AAABBBCCC';
+                const payerID = 'XXYYZZ654321';
     
                 window.xprops.createOrder = mockAsyncProp(expect('createOrder', async () => {
                     return ZalgoPromise.try(() => {
