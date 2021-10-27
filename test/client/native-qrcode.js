@@ -245,7 +245,7 @@ describe('native qrcode cases', () => {
                 }).expectCalls();
     
                 const orderID = generateOrderID();
-                const payerID = 'XXYYZZ654321';
+                const payerID = 'AAABBBCCC';
     
                 window.xprops.createOrder = mockAsyncProp(expect('createOrder', async () => {
                     return ZalgoPromise.try(() => {
@@ -294,7 +294,7 @@ describe('native qrcode cases', () => {
                 delete window.xprops.onClick;
     
                 const sessionToken = uniqueID();
-                const payerID = 'XXYYZZ654321';
+                const payerID = 'AAABBBCCC';
     
                 const gqlMock = getGraphQLApiMock({
                     extraHandler: expect('firebaseGQLCall', ({ data }) => {
