@@ -306,7 +306,7 @@ describe('native qrcode cases', () => {
                                             eligibility: true
                                         },
                                         venmo: {
-                                            eligibility:         false,
+                                            eligibility:         true,
                                             ineligibilityReason: ''
                                         }
                                     }
