@@ -13,8 +13,8 @@ import { isAndroidChrome, isIOSSafari, getStorageID, getPostRobot, getSDKVersion
 import { MESSAGE, HASH, EVENT } from './constants';
 
 const ANDROID_PAYPAL_APP_ID = 'com.paypal.android.p2pmobile';
-// const ANDROID_VENMO_APP_ID  = 'com.venmo';
-// const ANDROID_VENMO_DEBUG_APP_ID = 'com.venmo.fifa';
+const ANDROID_VENMO_APP_ID  = 'com.venmo';
+const ANDROID_VENMO_DEBUG_APP_ID = 'com.venmo.fifa';
 
 export type NativePopupOptions = {|
     parentDomain : string,
@@ -75,17 +75,17 @@ function isAndroidPayPalAppInstalled() : ZalgoPromise<AndroidApp> {
     });
 }
 
-// function isAndroidVenmoAppInstalled() : ZalgoPromise<AndroidApp> {
-//     return isAndroidAppInstalled(ANDROID_VENMO_APP_ID).then(app => {
-//         return { ...app };
-//     });
-// }
+function isAndroidVenmoAppInstalled() : ZalgoPromise<AndroidApp> {
+    return isAndroidAppInstalled(ANDROID_VENMO_APP_ID).then(app => {
+        return { ...app };
+    });
+}
 
-// function isAndroidVenmoDebugAppInstalled() : ZalgoPromise<AndroidApp> {
-//     return isAndroidAppInstalled(ANDROID_VENMO_DEBUG_APP_ID).then(app => {
-//         return { ...app };
-//     });
-// }
+function isAndroidVenmoDebugAppInstalled() : ZalgoPromise<AndroidApp> {
+    return isAndroidAppInstalled(ANDROID_VENMO_DEBUG_APP_ID).then(app => {
+        return { ...app };
+    });
+}
 
 export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID, sdkCorrelationID,
     clientID, fundingSource, locale, buyerCountry } : NativePopupOptions) : NativePopup {
@@ -157,27 +157,27 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
             });
         } else if (fundingSource === FUNDING.VENMO) {
             appInstalledPromise = ZalgoPromise.resolve({ installed: true });
-            // if (env !== ENV.PRODUCTION) {
-            //     appInstalledPromise = isAndroidVenmoDebugAppInstalled().catch(err => {
-            //         logger.info('native_popup_android_venmo_debug_app_installed_error')
-            //             .track({
-            //                 [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
-            //                 [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-            //             }).flush();
+            if (env !== ENV.PRODUCTION) {
+                appInstalledPromise = isAndroidVenmoDebugAppInstalled().catch(err => {
+                    logger.info('native_popup_android_venmo_debug_app_installed_error')
+                        .track({
+                            [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
+                            [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
+                        }).flush();
 
-            //         return { installed: false };
-            //     });
-            // } else {
-            //     appInstalledPromise = isAndroidVenmoAppInstalled().catch(err => {
-            //         logger.info('native_popup_android_venmo_app_installed_error')
-            //             .track({
-            //                 [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
-            //                 [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-            //             }).flush();
+                    return { installed: false };
+                });
+            } else {
+                appInstalledPromise = isAndroidVenmoAppInstalled().catch(err => {
+                    logger.info('native_popup_android_venmo_app_installed_error')
+                        .track({
+                            [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
+                            [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
+                        }).flush();
 
-            //         return { installed: false };
-            //     });
-            // }
+                    return { installed: false };
+                });
+            }
         }
     } else if (isIOSSafari()) {
         appInstalledPromise = isIosAppInstalled();
