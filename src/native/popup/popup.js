@@ -61,7 +61,7 @@ function isAndroidAppInstalled(appId : string) : ZalgoPromise<?AndroidApp> {
     return ZalgoPromise.resolve(null);
 }
 
-function isAndroidPayPalAppInstalled() : ZalgoPromise<AndroidApp> {
+function isAndroidPayPalAppInstalled() : ZalgoPromise<?AndroidApp> {
     return isAndroidAppInstalled(ANDROID_PAYPAL_APP_ID).then(app => {
         return { ...app };
     });
@@ -95,18 +95,6 @@ function isAppInstalled({ fundingSource, env } : {| fundingSource : $Values<type
 export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID, sdkCorrelationID,
     clientID, fundingSource, locale, buyerCountry } : NativePopupOptions) : NativePopup {
 
-    const appInstalledPromise = isAppInstalled({ fundingSource, env })
-        .catch(err => {
-            logger.info('native_popup_android_app_installed_error')
-                .track({
-                    [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_APP_ERROR,
-                    [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-                }).flush();
-            
-            return ZalgoPromise.resolve(null);
-        });
-    };
-
     const sdkVersion = getSDKVersion();
     const logger = setupNativeLogger({ env, sessionID, buttonSessionID, sdkCorrelationID,
         clientID, fundingSource, sdkVersion, locale, buyerCountry });
@@ -118,6 +106,17 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
         [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_INIT,
         [FPTI_CUSTOM_KEY.INFO_MSG]: base64encode(window.location.href)
     }).flush();
+
+    const appInstalledPromise = isAppInstalled({ fundingSource, env })
+        .catch(err => {
+            logger.info('native_popup_android_app_installed_error')
+                .track({
+                    [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_APP_ERROR,
+                    [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
+                }).flush();
+            
+            return ZalgoPromise.resolve(null);
+        });
 
     let sfvc = isSFVC();
     const sfvcOrSafari = !sfvc ? isSFVCorSafari() : false;
