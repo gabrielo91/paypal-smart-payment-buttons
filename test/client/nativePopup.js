@@ -846,7 +846,7 @@ describe('Native popup cases', () => {
                         }
 
                         if (event === 'awaitRedirect') {
-                            if (!payload || !payload.pageUrl || !payload.pageUrl === `${ window.location.href }#close`) {
+                            if (!payload || !payload.pageUrl || payload.pageUrl !== `${ window.location.href }#close`) {
                                 throw new Error(`Expected payload.pageUrl to be ${ window.location.href }#close, got ${ payload ? payload.pageUrl : 'undefined' }`);
                             }
 
@@ -967,7 +967,7 @@ describe('Native popup cases', () => {
                         }
 
                         if (event === 'awaitRedirect') {
-                            if (!payload || !payload.pageUrl || !payload.pageUrl === `${ window.location.href }#close`) {
+                            if (!payload || !payload.pageUrl || payload.pageUrl !== `${ window.location.href }#close`) {
                                 throw new Error(`Expected payload.pageUrl to be ${ window.location.href }#close, got ${ payload ? payload.pageUrl : 'undefined' }`);
                             }
 
