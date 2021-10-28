@@ -7,7 +7,7 @@ import { type CrossDomainWindowType } from 'cross-domain-utils/src';
 import type { ProxyWindow } from 'post-robot/src';
 
 import { getNativeEligibility, onLsatUpgradeCalled } from '../../api';
-import { getLogger, isAndroidChrome, unresolvedPromise, getStorageState, getPostRobot, postRobotOnceProxy, onCloseProxyWindow } from '../../lib';
+import { getLogger, isAndroidChrome, isiOSSafari, unresolvedPromise, getStorageState, getPostRobot, postRobotOnceProxy, onCloseProxyWindow } from '../../lib';
 import { FPTI_STATE, FPTI_TRANSITION, FPTI_CUSTOM_KEY } from '../../constants';
 import type { ButtonProps, ServiceData, Config, Components } from '../../button/props';
 import { type OnShippingChangeData } from '../../props/onShippingChange';
@@ -30,8 +30,9 @@ const POST_MESSAGE = {
 };
 
 type AppDetect = {|
+    id? : string,
     installed : boolean,
-    [ string ] : string
+    version? : string
 |};
 
 function logDetectedApp(app : AppDetect) {
@@ -53,19 +54,19 @@ function logDetectedApp(app : AppDetect) {
 
 type AppEligibleOptions = {|
     fundingSource : $Values<typeof FUNDING>,
-    appDetect : {|
-        id : string,
-        installed : boolean,
-        version : string
-    |}
+    appDetect : AppDetect
 |};
 function isAppIneligible({ fundingSource, appDetect = {} } : AppEligibleOptions) : boolean {
     if (fundingSource === FUNDING.PAYPAL) {
-        if (appDetect.installed && appDetect.version.indexOf('8.5') !== -1) {
+        if (isAndroidChrome()) {
+            if (appDetect.installed && appDetect.version?.indexOf('8.5') !== -1) {
+                return false;
+            }
+
+            return true;
+        } else {
             return false;
         }
-
-        return true;
     } else if (fundingSource === FUNDING.VENMO) {
         return false;
     }
