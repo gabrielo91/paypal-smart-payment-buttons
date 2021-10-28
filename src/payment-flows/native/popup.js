@@ -71,7 +71,7 @@ function getEligibility({ fundingSource, props, serviceData, sfvc, validatePromi
             return false;
         }
 
-        if (appDetect && !appDetect.installed) {
+        if (fundingSource !== FUNDING.VENMO && appDetect && !appDetect.installed) {
             return false;
         }
 
