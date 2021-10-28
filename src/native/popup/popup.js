@@ -34,39 +34,31 @@ type NativePopup = {|
 
 type AndroidApp = {|
     id? : string,
-    installed : boolean,
     version? : string
 |};
 
-type IOSApp = {|
-    installed : boolean
-|};
-
-function isAndroidAppInstalled(appId : string) : ZalgoPromise<AndroidApp> {
+function isAndroidAppInstalled(appId : string) : ZalgoPromise<?AndroidApp> {
     // assume true unless we can prove false
     if (window.navigator && window.navigator.getInstalledRelatedApps) {
-        return window.navigator.getInstalledRelatedApps().then(apps => {
-            if (apps && apps.length) {
-                const foundApp = apps.find(app => app.id === appId);
-                if (foundApp) {
-                    const id = foundApp.id;
-                    const version = foundApp.version;
+        return window.navigator.getInstalledRelatedApps()
+            .then(apps => {
+                if (apps && apps.length) {
+                    const foundApp = apps.find(app => app.id === appId);
+                    if (foundApp) {
+                        const id = foundApp.id;
+                        const version = foundApp.version;
 
-                    return ZalgoPromise.resolve({ id, installed: true, version });
-                } else {
-                    return ZalgoPromise.resolve({ installed: false });
+                        return ZalgoPromise.resolve({ id, installed: true, version });
+                    } else {
+                        return ZalgoPromise.resolve({ installed: false });
+                    }
                 }
-            }
-            
-            return ZalgoPromise.resolve({ installed: false });
-        });
+                
+                return ZalgoPromise.resolve(null);
+            });
     }
 
-    return ZalgoPromise.resolve({ installed: true });
-}
-
-function isIosAppInstalled() : ZalgoPromise<IOSApp> {
-    return ZalgoPromise.resolve({ installed: true });
+    return ZalgoPromise.resolve(null);
 }
 
 function isAndroidPayPalAppInstalled() : ZalgoPromise<AndroidApp> {
@@ -75,22 +67,45 @@ function isAndroidPayPalAppInstalled() : ZalgoPromise<AndroidApp> {
     });
 }
 
-function isAndroidVenmoAppInstalled() : ZalgoPromise<AndroidApp> {
-    return isAndroidAppInstalled(ANDROID_VENMO_APP_ID).then(app => {
-        return { ...app };
-    });
+function isAndroidVenmoAppInstalled({ env }) : ZalgoPromise<?AndroidApp> {
+    if (env === ENV.PRODUCTION) {
+        return isAndroidAppInstalled(ANDROID_VENMO_APP_ID).then(app => {
+            return { ...app };
+        });
+    } else {
+        return isAndroidAppInstalled(ANDROID_VENMO_DEBUG_APP_ID).then(app => {
+            return { ...app };
+        });
+    }
 }
 
-function isAndroidVenmoDebugAppInstalled() : ZalgoPromise<AndroidApp> {
-    return isAndroidAppInstalled(ANDROID_VENMO_DEBUG_APP_ID).then(app => {
-        return { ...app };
-    });
+function isAppInstalled({ fundingSource, env } : {| fundingSource : $Values<typeof FUNDING>, env : $Values<typeof ENV> |}) : ZalgoPromise<?AndroidApp> {
+    switch (fundingSource) {
+    case FUNDING.PAYPAL:
+        return isAndroidPayPalAppInstalled();
+
+    case FUNDING.VENMO:
+        return isAndroidVenmoAppInstalled({ env });
+
+    default:
+        return ZalgoPromise.reject(`App detection not supported for ${ fundingSource } apps.`);
+    }
 }
 
 export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID, sdkCorrelationID,
     clientID, fundingSource, locale, buyerCountry } : NativePopupOptions) : NativePopup {
 
-    let appInstalledPromise = ZalgoPromise.resolve({ installed: true });
+    const appInstalledPromise = isAppInstalled({ fundingSource, env })
+        .catch(err => {
+            logger.info('native_popup_android_app_installed_error')
+                .track({
+                    [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_APP_ERROR,
+                    [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
+                }).flush();
+            
+            return ZalgoPromise.resolve(null);
+        });
+    };
 
     const sdkVersion = getSDKVersion();
     const logger = setupNativeLogger({ env, sessionID, buttonSessionID, sdkCorrelationID,
@@ -143,45 +158,6 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
                 [FPTI_KEY.TRANSITION]: FPTI_TRANSITION.NATIVE_POPUP_PAGEHIDE
             }).flush();
     });
-
-    if (isAndroidChrome()) {
-        if (fundingSource === FUNDING.PAYPAL) {
-            appInstalledPromise = isAndroidPayPalAppInstalled().catch(err => {
-                logger.info('native_popup_android_paypal_app_installed_error')
-                    .track({
-                        [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_PAYPAL_APP_ERROR,
-                        [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-                    }).flush();
-
-                return { installed: false };
-            });
-        } else if (fundingSource === FUNDING.VENMO) {
-            appInstalledPromise = ZalgoPromise.resolve({ installed: true });
-            if (env !== ENV.PRODUCTION) {
-                appInstalledPromise = isAndroidVenmoDebugAppInstalled().catch(err => {
-                    logger.info('native_popup_android_venmo_debug_app_installed_error')
-                        .track({
-                            [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
-                            [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-                        }).flush();
-
-                    return { installed: false };
-                });
-            } else {
-                appInstalledPromise = isAndroidVenmoAppInstalled().catch(err => {
-                    logger.info('native_popup_android_venmo_app_installed_error')
-                        .track({
-                            [FPTI_KEY.TRANSITION]:      FPTI_TRANSITION.NATIVE_POPUP_ANDROID_VENMO_APP_ERROR,
-                            [FPTI_CUSTOM_KEY.ERR_DESC]: `Error: ${ stringifyErrorMessage(err) }`
-                        }).flush();
-
-                    return { installed: false };
-                });
-            }
-        }
-    } else if (isIOSSafari()) {
-        appInstalledPromise = isIosAppInstalled();
-    }
 
     const replaceHash = (hash) => {
         return window.location.replace(

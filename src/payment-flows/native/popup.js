@@ -56,19 +56,19 @@ type AppEligibleOptions = {|
     fundingSource : $Values<typeof FUNDING>,
     appDetect : AppDetect
 |};
-function isAppIneligible({ fundingSource, appDetect = {} } : AppEligibleOptions) : boolean {
-    if (fundingSource === FUNDING.PAYPAL) {
-        if (isAndroidChrome()) {
-            if (appDetect.installed && appDetect.version?.indexOf('8.5') !== -1) {
-                return false;
-            }
+function isDetectedAppEligible({ fundingSource, appDetect } : AppEligibleOptions) : boolean {
+    if (appDetect === null) {
+        return true;
+    }
 
+    if (fundingSource === FUNDING.PAYPAL) {
+        if (appDetect.installed && appDetect.version?.indexOf('8.5') !== -1) {
             return true;
         } else {
             return false;
         }
     } else if (fundingSource === FUNDING.VENMO) {
-        return false;
+        return true;
     }
 
     return true;
@@ -93,7 +93,7 @@ function getEligibility({ fundingSource, props, serviceData, sfvc, validatePromi
             return false;
         }
 
-        if (isAppIneligible({ fundingSource, appDetect })) {
+        if (!isDetectedAppEligible({ fundingSource, appDetect })) {
             return false;
         }
 
