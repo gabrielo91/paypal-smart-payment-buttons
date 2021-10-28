@@ -51,6 +51,28 @@ function logDetectedApp(app : AppDetect) {
     }
 }
 
+type AppEligibleOptions = {|
+    fundingSource : $Values<typeof FUNDING>,
+    appDetect : {|
+        id : string,
+        installed : boolean,
+        version : string
+    |}
+|};
+function isAppIneligible({ fundingSource, appDetect = {} } : AppEligibleOptions) : boolean {
+    if (fundingSource === FUNDING.PAYPAL) {
+        if (appDetect.installed && appDetect.version.indexOf('8.5') !== -1) {
+            return false;
+        }
+
+        return true;
+    } else if (fundingSource === FUNDING.VENMO) {
+        return false;
+    }
+
+    return true;
+}
+
 type EligibilityOptions = {|
     props : ButtonProps,
     serviceData : ServiceData,
@@ -60,7 +82,6 @@ type EligibilityOptions = {|
     stickinessID : string,
     appDetect : AppDetect
 |};
-
 function getEligibility({ fundingSource, props, serviceData, sfvc, validatePromise, stickinessID, appDetect } : EligibilityOptions) : ZalgoPromise<boolean> {
     const { createOrder, onShippingChange, vault, platform, clientID, currency, buttonSessionID, enableFunding, merchantDomain } = props;
     const { buyerCountry, cookies, merchantID } = serviceData;
@@ -71,7 +92,7 @@ function getEligibility({ fundingSource, props, serviceData, sfvc, validatePromi
             return false;
         }
 
-        if (fundingSource !== FUNDING.VENMO && appDetect && !appDetect.installed) {
+        if (isAppIneligible({ fundingSource, appDetect })) {
             return false;
         }
 
