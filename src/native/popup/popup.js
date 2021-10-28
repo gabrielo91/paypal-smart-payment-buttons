@@ -80,6 +80,10 @@ function isAndroidVenmoAppInstalled({ env }) : ZalgoPromise<?AndroidApp> {
 }
 
 function isAppInstalled({ fundingSource, env } : {| fundingSource : $Values<typeof FUNDING>, env : $Values<typeof ENV> |}) : ZalgoPromise<?AndroidApp> {
+    if (isIOSSafari()) {
+        return ZalgoPromise.resolve(null);
+    }
+
     switch (fundingSource) {
     case FUNDING.PAYPAL:
         return isAndroidPayPalAppInstalled();
