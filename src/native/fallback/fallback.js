@@ -1,7 +1,7 @@
 /* @flow */
 
 import { cleanup } from 'belter/src';
-import { ZalgoPromise } from 'zalgo-promise/src';
+import type { ZalgoPromise } from 'zalgo-promise/src';
 
 import { getPostRobot } from '../../lib';
 
