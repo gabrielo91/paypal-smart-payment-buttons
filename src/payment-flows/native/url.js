@@ -19,7 +19,7 @@ import { NATIVE_DOMAIN, HISTORY_NATIVE_POPUP_DOMAIN, MOBILE_NATIVE_POPUP_DOMAIN,
 export function getNativeDomain({ props } : {| props : ButtonProps |}) : string {
     const { env } = props;
 
-    if (env === ENV.LOCAL || (env === ENV.SANDBOX && isNativeOptedIn({ props }) && !(window.xprops && window.xprops.useCorrectNativeSandboxDomain))) {
+    if ((env === ENV.SANDBOX && isNativeOptedIn({ props }) && !(window.xprops && window.xprops.useCorrectNativeSandboxDomain))) {
         return 'https://www.paypal.com';
     }
 
@@ -146,8 +146,9 @@ function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, se
 
 export function getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : string {
     const queryParams = getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID });
+    const domain = props.env === ENV.LOCAL ? 'https://www.paypal.com' : getNativeDomain({ props });
 
-    return extendUrl(`${ getNativeDomain({ props }) }${ NATIVE_CHECKOUT_URI[fundingSource] }`, {
+    return extendUrl(`${ domain }${ NATIVE_CHECKOUT_URI[fundingSource] }`, {
         // $FlowFixMe
         query: queryParams
     });

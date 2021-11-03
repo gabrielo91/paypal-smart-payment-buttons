@@ -93,12 +93,12 @@ function getEligibility({ fundingSource, props, serviceData, sfvc, validatePromi
             return false;
         }
 
-        if (!isDetectedAppEligible({ fundingSource, appDetect })) {
-            return false;
-        }
-
         if (isNativeOptedIn({ props })) {
             return true;
+        }
+
+        if (!isDetectedAppEligible({ fundingSource, appDetect })) {
+            return false;
         }
 
         if (sfvc) {
