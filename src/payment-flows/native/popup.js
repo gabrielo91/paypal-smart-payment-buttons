@@ -11,12 +11,13 @@ import { getLogger, isAndroidChrome, unresolvedPromise, getStorageState, toProxy
 import { FPTI_STATE, FPTI_TRANSITION, FPTI_CUSTOM_KEY } from '../../constants';
 import type { ButtonProps, ServiceData, Config, Components } from '../../button/props';
 import { type OnShippingChangeData } from '../../props/onShippingChange';
-import type { Payment } from '../types';
+import type { AppDetect, Payment } from '../types';
 
 
 import { isNativeOptedIn, setNativeOptOut, type NativeFallbackOptions } from './eligibility';
 import { getNativeUrl, getNativePopupUrl, getNativeDomain, getNativePopupDomain, getNativeFallbackUrl } from './url';
 import { connectNative } from './socket';
+import { appDetected } from './util';
 
 const POST_MESSAGE = {
     AWAIT_REDIRECT:             'awaitRedirect',
@@ -28,12 +29,6 @@ const POST_MESSAGE = {
     ON_COMPLETE:                'onComplete',
     ON_ERROR:                   'onError'
 };
-
-type AppDetect = {|
-    id? : string,
-    installed : boolean,
-    version? : string
-|};
 
 function logDetectedApp(app : AppDetect) {
     if (app) {
@@ -422,19 +417,6 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     nativePopupWinProxy.close();
                 };
 
-                const appDetected = (() => {
-                    let called = false;
-
-                    return function detectApp({ app }) : boolean {
-                        if (called) {
-                            return false;
-                        }
-
-                        called = true;
-                        return app ? true : false;
-                    };
-                })();
-
                 const awaitRedirectListener = postRobotOnceProxy(POST_MESSAGE.AWAIT_REDIRECT, { proxyWin: nativePopupWinProxy, domain: nativePopupDomain }, ({ data: { app: appDetect, pageUrl, sfvc, stickinessID } }) => {
                     getLogger().info(`native_post_message_await_redirect`).flush();
                     logDetectedApp(appDetect);
@@ -540,7 +522,6 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                         }
 
                         const retry = appDetected({ app: appDetect });
-
                         return orderPromise.then(orderID => {
                             const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry });
 

@@ -276,3 +276,8 @@ type ApplePaySessionConfig = {|
 
 export type XApplePaySessionConfigRequest = (version : number, request : Object) => ZalgoPromise<ApplePaySessionConfig>;
 
+export type AppDetect = {|
+    id? : string,
+    installed : boolean,
+    version? : string
+|};

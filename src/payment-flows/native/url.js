@@ -1,6 +1,5 @@
 /* @flow */
 
-
 import { extendUrl, isDevice } from 'belter/src';
 import { COUNTRY, ENV, FUNDING } from '@paypal/sdk-constants/src';
 import { getDomain } from 'cross-domain-utils/src';
