@@ -422,6 +422,19 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     nativePopupWinProxy.close();
                 };
 
+                const appDetected = (() => {
+                    let called = false;
+
+                    return function detectApp({ app }) : boolean {
+                        if (called) {
+                            return false;
+                        }
+
+                        called = true;
+                        return app ? true : false;
+                    };
+                })();
+
                 const awaitRedirectListener = postRobotOnceProxy(POST_MESSAGE.AWAIT_REDIRECT, { proxyWin: nativePopupWinProxy, domain: nativePopupDomain }, ({ data: { app: appDetect, pageUrl, sfvc, stickinessID } }) => {
                     getLogger().info(`native_post_message_await_redirect`).flush();
                     logDetectedApp(appDetect);
@@ -526,7 +539,7 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                             });
                         }
 
-                        const retry = appDetect || false;
+                        const retry = appDetected({ app: appDetect });
 
                         return orderPromise.then(orderID => {
                             const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry });
