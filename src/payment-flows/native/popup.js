@@ -526,8 +526,10 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                             });
                         }
 
+                        const retry = valid && eligible && fundingSource === FUNDING.VENMO;
+
                         return orderPromise.then(orderID => {
-                            const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID });
+                            const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry });
 
                             getLogger().info(`native_attempt_appswitch_url_popup`, { url: nativeUrl })
                                 .track({

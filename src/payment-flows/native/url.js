@@ -74,7 +74,8 @@ type GetNativeUrlOptions = {|
     sessionUID : string,
     pageUrl : string,
     orderID : string,
-    stickinessID : string
+    stickinessID : string,
+    retry? : boolean
 |};
 
 type NativeUrlQuery = {|
@@ -98,10 +99,11 @@ type NativeUrlQuery = {|
     domain : string,
     rtdbInstanceID : string,
     buyerCountry : $Values<typeof COUNTRY>,
-    sdkVersion : string
+    sdkVersion : string,
+    retry? : boolean
 |};
 
-function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : NativeUrlQuery {
+function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry } : GetNativeUrlOptions) : NativeUrlQuery {
     const { env, clientID, commit, buttonSessionID, stageHost, apiStageHost, enableFunding, merchantDomain } = props;
     const { facilitatorAccessToken, sdkMeta, buyerCountry } = serviceData;
     const { sdkVersion, firebase } = config;
@@ -134,7 +136,8 @@ function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, se
         domain:         merchantDomain,
         rtdbInstanceID: firebase.databaseURL,
         buyerCountry,
-        sdkVersion
+        sdkVersion,
+        retry:          retry || false
     };
 
     if (queryParams.channel === CHANNEL.DESKTOP) {
@@ -144,8 +147,8 @@ function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, se
     return queryParams;
 }
 
-export function getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : string {
-    const queryParams = getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID });
+export function getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry } : GetNativeUrlOptions) : string {
+    const queryParams = getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry });
 
     return extendUrl(`${ getNativeDomain({ props }) }${ NATIVE_CHECKOUT_URI[fundingSource] }`, {
         // $FlowFixMe
