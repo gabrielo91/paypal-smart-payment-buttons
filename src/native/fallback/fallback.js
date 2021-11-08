@@ -8,14 +8,15 @@ import { getPostRobot } from '../../lib';
 import { MESSAGE } from './constants';
 
 type SetupNativeFallbackOptions = {|
-    parentDomain : string
+    parentDomain : string,
+    retry : boolean
 |};
 
 type NativeFallback = {|
     destroy : () => ZalgoPromise<void>
 |};
 
-export function setupNativeFallback({ parentDomain = window.location.origin } : SetupNativeFallbackOptions) : NativeFallback {
+export function setupNativeFallback({ parentDomain = window.location.origin, retry } : SetupNativeFallbackOptions) : NativeFallback {
     if (!window.opener) {
         throw new Error(`Expected window to have opener`);
     }
@@ -29,6 +30,10 @@ export function setupNativeFallback({ parentDomain = window.location.origin } : 
         return postRobot.send(window.opener, event, payload, { domain: parentDomain })
             .then(({ data }) => data);
     };
+
+    if (retry) {
+        window.xprops.restart({ win: window });
+    }
 
     sendToParent(MESSAGE.DETECT_WEB_SWITCH);
 
