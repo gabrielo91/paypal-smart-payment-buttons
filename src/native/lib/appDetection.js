@@ -11,6 +11,7 @@ const ANDROID_VENMO_DEBUG_APP_ID = 'com.venmo.fifa';
 
 type AndroidApp = {|
     id? : string,
+    installed : boolean,
     version? : string
 |};
 
@@ -31,11 +32,11 @@ function isAndroidAppInstalled(appId : string) : ZalgoPromise<?AndroidApp> {
                     }
                 }
                 
-                return ZalgoPromise.resolve(null);
+                return ZalgoPromise.resolve({ installed: false });
             });
     }
 
-    return ZalgoPromise.resolve(null);
+    return ZalgoPromise.resolve({ installed: false });
 }
 
 function isAndroidPayPalAppInstalled() : ZalgoPromise<?AndroidApp> {

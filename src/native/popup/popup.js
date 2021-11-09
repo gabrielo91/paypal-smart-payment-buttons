@@ -265,6 +265,10 @@ export function setupNativePopup({ parentDomain, env, sessionID, buttonSessionID
             if (appSwitch) {
                 const timer = setTimeout(() => {
                     if (!didRedirect) {
+                        logger.info('Redirecting to native...');
+                        redirectUrl = redirectUrl.replace('https://localhost.paypal.com:8443', 'https://www.paypal.com');
+                        window.location.reload();
+                        window.location.replace(redirectUrl);
                         sendToParent(MESSAGE.DETECT_POSSIBLE_APP_SWITCH);
                     }
                 }, 1500);
