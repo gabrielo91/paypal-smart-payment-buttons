@@ -223,9 +223,9 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
     return {
         click: () => {
             nativePopupPromise = new ZalgoPromise((resolve, reject) => {
-                const url = getNativePopupUrl({ props, serviceData, fundingSource });
+                const popupUrl = getNativePopupUrl({ props, serviceData, fundingSource });
                 const nativePopupDomain = getNativePopupDomain({ props });
-                const nativePopupWinProxy = getNativePopupProxyWindow(url);
+                const nativePopupWinProxy = getNativePopupProxyWindow(popupUrl);
 
                 const cleanupPopupWin = clean.register(() => {
                     return nativePopupWinProxy.close();
@@ -400,10 +400,8 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     }).then(resolve, reject);
                 });
 
-                const onDetectRetry = once(({ orderID, pageUrl, stickinessID }) : ZalgoPromise<void> => {
-                    return nativePopupWinProxy.setLocation(getNativeUrl({
-                        props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID
-                    })).catch(reject);
+                const onDetectRetry = once(() : ZalgoPromise<void> => {
+                    return nativePopupWinProxy.setLocation(popupUrl).catch(reject);
                 });
 
                 const closeListener = onCloseProxyWindow(nativePopupWinProxy, () => {
@@ -446,9 +444,7 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
 
                     const onRetryListener = postRobotOnceProxy(POST_MESSAGE.DETECT_RETRY, { proxyWin: nativePopupWinProxy, domain: getNativeDomain({ props }) }, () => {
                         getLogger().info(`native_post_message_retry`).flush();
-                        return orderPromise.then(orderID => {
-                            return onDetectRetry({ orderID, pageUrl, stickinessID });
-                        });
+                        return onDetectRetry();
                     });
 
                     const onApproveListener = postRobotOnceProxy(POST_MESSAGE.ON_APPROVE, { proxyWin: nativePopupWinProxy, domain: nativePopupDomain }, ({ data }) => {
