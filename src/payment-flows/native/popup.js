@@ -403,7 +403,7 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                 const onDetectRetry = once(({ orderID, pageUrl, stickinessID }) : ZalgoPromise<void> => {
                     return nativePopupWinProxy.setLocation(getNativeUrl({
                         props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID
-                    })).then(noop);
+                    })).catch(reject);
                 });
 
                 const closeListener = onCloseProxyWindow(nativePopupWinProxy, () => {
