@@ -32,7 +32,7 @@ export function setupNativeFallback({ parentDomain = window.location.origin, ret
     };
 
     if (retry) {
-        window.xprops.restart({ win: window });
+        sendToParent(MESSAGE.DETECT_RETRY);
     }
 
     sendToParent(MESSAGE.DETECT_WEB_SWITCH);

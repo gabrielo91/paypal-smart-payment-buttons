@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 /* @flow */
 
 import { stringifyError, noop, once, popup, type CleanupType } from 'belter/src';
@@ -22,6 +23,7 @@ import { appDetected } from './util';
 const POST_MESSAGE = {
     AWAIT_REDIRECT:             'awaitRedirect',
     DETECT_POSSIBLE_APP_SWITCH: 'detectAppSwitch',
+    DETECT_RETRY:               'detectRetry',
     DETECT_WEB_SWITCH:          'detectWebSwitch',
     ON_APPROVE:                 'onApprove',
     ON_CANCEL:                  'onCancel',
@@ -398,6 +400,11 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     }).then(resolve, reject);
                 });
 
+                const onDetectRetry = once(({ orderID, pageUrl, stickinessID }) : ZalgoPromise<void> => {
+                    return nativePopupWinProxy.setLocation(getNativeUrl({
+                        props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID
+                    })).then(noop);
+                });
 
                 const closeListener = onCloseProxyWindow(nativePopupWinProxy, () => {
                     getLogger().info(`native_popup_closed`).track({
@@ -435,6 +442,13 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                     const onDetectWebSwitchListener = postRobotOnceProxy(POST_MESSAGE.DETECT_WEB_SWITCH, { proxyWin: nativePopupWinProxy, domain: getNativeDomain({ props }) }, () => {
                         getLogger().info(`native_post_message_detect_web_switch`).flush();
                         return onDetectWebSwitch();
+                    });
+
+                    const onRetryListener = postRobotOnceProxy(POST_MESSAGE.DETECT_RETRY, { proxyWin: nativePopupWinProxy, domain: getNativeDomain({ props }) }, () => {
+                        getLogger().info(`native_post_message_retry`).flush();
+                        return orderPromise.then(orderID => {
+                            return onDetectRetry({ orderID, pageUrl, stickinessID });
+                        });
                     });
 
                     const onApproveListener = postRobotOnceProxy(POST_MESSAGE.ON_APPROVE, { proxyWin: nativePopupWinProxy, domain: nativePopupDomain }, ({ data }) => {
@@ -487,6 +501,7 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                             onCompleteListener.cancel(),
                             onErrorListener.cancel(),
                             onDetectWebSwitchListener.cancel(),
+                            onRetryListener.cancel(),
                             closeListener.cancel()
                         ]).then(noop);
                     });
@@ -521,9 +536,9 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
                             });
                         }
 
-                        const retry = appDetected({ app: appDetect });
                         return orderPromise.then(orderID => {
-                            const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry });
+                            const retryFlow = appDetected({ app: appDetect });
+                            const nativeUrl = getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID, retry: retryFlow });
 
                             getLogger().info(`native_attempt_appswitch_url_popup`, { url: nativeUrl })
                                 .track({
@@ -590,4 +605,4 @@ export function initNativePopup({ payment, props, serviceData, config, sessionUI
         }
     };
 }
-
+/* eslint-enable max-lines */
