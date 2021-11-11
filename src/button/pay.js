@@ -107,14 +107,15 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                 [FPTI_KEY.IS_VAULT]:        instrumentType ? '1' : '0',
                 [FPTI_CUSTOM_KEY.INFO_MSG]: enableNativeCheckout ? 'tester' : ''
             }).flush();
+        
+        const accessTokenPromise = ZalgoPromise.try(() => {
+            createAccessToken(clientID, { cache: false })
+                .then(facilitatorAccessToken => facilitatorAccessToken);
+        });
 
         const clickPromise = click
             ? ZalgoPromise.try(() => {
-                createAccessToken(clientID, { cache: false })
-                    .then(facilitatorAccessToken => {
-                        serviceData.facilitatorAccessToken = facilitatorAccessToken;
-                    })
-                    .finally(click);
+                return accessTokenPromise.then(click);
             })
             : ZalgoPromise.resolve();
         clickPromise.catch(noop);
@@ -169,11 +170,12 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                         return;
                     }
 
-                    return getConfirmOrder({
-                        orderID, payload: confirmOrderPayload, partnerAttributionID
-                    }, {
-                        facilitatorAccessToken: serviceData.facilitatorAccessToken
-                    });
+                    createAccessToken(clientID, { cache: false })
+                        .then(facilitatorAccessToken => {
+                            return getConfirmOrder({
+                                orderID, payload: confirmOrderPayload, partnerAttributionID
+                            }, { facilitatorAccessToken });
+                        });
                 });
             });
 
