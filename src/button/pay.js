@@ -109,7 +109,7 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
             }).flush();
         
         const accessTokenPromise = ZalgoPromise.try(() => {
-            createAccessToken(clientID, { cache: false })
+            return createAccessToken(clientID, { cache: false })
                 .then(facilitatorAccessToken => facilitatorAccessToken);
         });
 
