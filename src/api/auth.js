@@ -12,10 +12,11 @@ import { HEADERS } from '../constants';
 import { callGraphQL } from './api';
 
 type GenerateAccessTokenOptions = {|
+    cache? : boolean,
     targetSubject? : string
 |};
 
-export function createAccessToken(clientID : string, { targetSubject } : GenerateAccessTokenOptions = {}) : ZalgoPromise<string> {
+export function createAccessToken(clientID : string, { cache = true, targetSubject } : GenerateAccessTokenOptions = {}) : ZalgoPromise<string> {
     return inlineMemoize(createAccessToken, () => {
 
         getLogger().info(`rest_api_create_access_token`);
@@ -24,6 +25,9 @@ export function createAccessToken(clientID : string, { targetSubject } : Generat
         const data : Object = {
             grant_type: `client_credentials`
         };
+        if (!cache) {
+            data.ignoreCache = true;
+        }
 
         if (targetSubject) {
             data.target_subject = targetSubject;

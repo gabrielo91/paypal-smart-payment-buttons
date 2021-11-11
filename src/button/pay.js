@@ -7,7 +7,7 @@ import { FPTI_KEY } from '@paypal/sdk-constants/src';
 import { applepay, checkout, cardField, cardForm, native, brandedVaultCard, vaultCapture, walletCapture, popupBridge, type Payment, type PaymentFlow } from '../payment-flows';
 import { getLogger, sendBeacon } from '../lib';
 import { FPTI_TRANSITION, BUYER_INTENT, FPTI_CONTEXT_TYPE, FPTI_CUSTOM_KEY } from '../constants';
-import { updateButtonClientConfig } from '../api';
+import { createAccessToken, updateButtonClientConfig } from '../api';
 import { getConfirmOrder } from '../props/confirmOrder';
 import { enableVaultSetup } from '../middleware';
 
@@ -108,7 +108,15 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                 [FPTI_CUSTOM_KEY.INFO_MSG]: enableNativeCheckout ? 'tester' : ''
             }).flush();
 
-        const clickPromise = click ? ZalgoPromise.try(click) : ZalgoPromise.resolve();
+        const clickPromise = click
+            ? ZalgoPromise.try(() => {
+                createAccessToken(clientID, { cache: false })
+                    .then(facilitatorAccessToken => {
+                        serviceData.facilitatorAccessToken = facilitatorAccessToken;
+                    })
+                    .finally(click);
+            })
+            : ZalgoPromise.resolve();
         clickPromise.catch(noop);
 
         return ZalgoPromise.try(() => {
