@@ -170,7 +170,7 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                         return;
                     }
 
-                    createAccessToken(clientID, { cache: false })
+                    return createAccessToken(clientID, { cache: false })
                         .then(facilitatorAccessToken => {
                             return getConfirmOrder({
                                 orderID, payload: confirmOrderPayload, partnerAttributionID
