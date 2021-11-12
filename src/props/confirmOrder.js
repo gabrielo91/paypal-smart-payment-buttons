@@ -21,11 +21,11 @@ type ConfirmOrderXProps = {|
     partnerAttributionID : ?string
 |};
 
-export function getConfirmOrder({ orderID, payload, partnerAttributionID } : ConfirmOrderXProps, { facilitatorAccessToken } : {| facilitatorAccessToken : string |}) : ZalgoPromise<void> {
+export function getConfirmOrder({ orderID, payload, partnerAttributionID } : ConfirmOrderXProps, { getFacilitatorAccessToken } : {| getFacilitatorAccessToken : () => ZalgoPromise<string> |}) : ZalgoPromise<void> {
     const startTime = Date.now();
 
     return ZalgoPromise.try(() => {
-        return confirmOrderAPI(orderID, payload, { facilitatorAccessToken, partnerAttributionID });
+        return confirmOrderAPI(orderID, payload, { getFacilitatorAccessToken, partnerAttributionID });
     })
         .catch(err => {
             getLogger().error('confirm_order_error', { err: stringifyError(err) });
