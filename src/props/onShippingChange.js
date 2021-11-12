@@ -73,10 +73,10 @@ export type OnShippingChangeActionsType = {|
     reject : () => ZalgoPromise<void>
 |};
 
-export function buildXShippingChangeActions({ orderID, actions, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI } : {| orderID : string, actions : OnShippingChangeActionsType, facilitatorAccessToken : string, buyerAccessToken : ?string, partnerAttributionID : ?string, forceRestAPI : boolean |}) : XOnShippingChangeActionsType {
+export function buildXShippingChangeActions({ orderID, actions, getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI } : {| orderID : string, actions : OnShippingChangeActionsType, getFacilitatorAccessToken : () => ZalgoPromise<string>, buyerAccessToken : ?string, partnerAttributionID : ?string, forceRestAPI : boolean |}) : XOnShippingChangeActionsType {
 
     const patch = (data = {}) => {
-        return patchOrder(orderID, data, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI }).catch(() => {
+        return patchOrder(orderID, data, { getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI }).catch(() => {
             throw new Error('Order could not be patched');
         });
     };
@@ -101,7 +101,7 @@ type OnShippingChangeXProps = {|
     clientID : string
 |};
 
-export function getOnShippingChange({ onShippingChange, partnerAttributionID, clientID } : OnShippingChangeXProps, { facilitatorAccessToken, createOrder } : {| facilitatorAccessToken : string, createOrder : CreateOrder |}) : ?OnShippingChange {
+export function getOnShippingChange({ onShippingChange, partnerAttributionID, clientID } : OnShippingChangeXProps, { getFacilitatorAccessToken, createOrder } : {| getFacilitatorAccessToken : () => ZalgoPromise<string>, createOrder : CreateOrder |}) : ?OnShippingChange {
     const upgradeLSAT = LSAT_UPGRADE_EXCLUDED_MERCHANTS.indexOf(clientID) === -1;
 
     if (onShippingChange) {
@@ -117,7 +117,7 @@ export function getOnShippingChange({ onShippingChange, partnerAttributionID, cl
                         [FPTI_CUSTOM_KEY.SHIPPING_CALLBACK_INVOKED]: '1'
                     }).flush();
 
-                return onShippingChange(buildXOnShippingChangeData(data), buildXShippingChangeActions({ orderID, facilitatorAccessToken, buyerAccessToken, actions, partnerAttributionID, forceRestAPI }));
+                return onShippingChange(buildXOnShippingChangeData(data), buildXShippingChangeActions({ orderID, getFacilitatorAccessToken, buyerAccessToken, actions, partnerAttributionID, forceRestAPI }));
             });
         };
     }

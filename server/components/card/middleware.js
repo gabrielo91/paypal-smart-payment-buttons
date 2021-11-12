@@ -44,6 +44,7 @@ export function getCardMiddleware({ logger = defaultLogger, cache, cdn = !isLoca
 
             const cardSetupOptions : SetupCardOptions = {
                 cspNonce,
+                clientID,
                 facilitatorAccessToken
             };
 

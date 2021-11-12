@@ -74,11 +74,11 @@ export function getCardFields() : ?Card {
 }
 
 type SubmitCardFieldsOptions = {|
-    facilitatorAccessToken : string
+    getFacilitatorAccessToken : () => ZalgoPromise<string>
 |};
 
-export function submitCardFields({ facilitatorAccessToken } : SubmitCardFieldsOptions) : ZalgoPromise<void> {
-    const { intent, branded, vault, createOrder, onApprove, clientID } = getCardProps({ facilitatorAccessToken });
+export function submitCardFields({ getFacilitatorAccessToken } : SubmitCardFieldsOptions) : ZalgoPromise<void> {
+    const { intent, branded, vault, createOrder, onApprove, clientID } = getCardProps({ getFacilitatorAccessToken });
     
     return ZalgoPromise.try(() => {
         if (!hasCardFields()) {

@@ -35,7 +35,7 @@ function isApplePayPaymentEligible({ payment } : IsPaymentEligibleOptions) : boo
 
 function initApplePay({ props, payment, serviceData } : InitOptions) : PaymentFlowInstance {
     const { createOrder, onApprove, onCancel, onError, onClick, onShippingChange, locale, clientID, merchantDomain, currency, applePay, partnerAttributionID } = props;
-    const { facilitatorAccessToken } = serviceData;
+    const { getFacilitatorAccessToken } = serviceData;
     const { fundingSource } = payment;
 
     if (clean) {
@@ -182,7 +182,7 @@ function initApplePay({ props, payment, serviceData } : InitOptions) : PaymentFl
             };
 
             // $FlowFixMe
-            return onShippingChange({ ...data, facilitatorAccessToken, partnerAttributionID, forceRestAPI: true }, actions)
+            return onShippingChange({ ...data, getFacilitatorAccessToken, partnerAttributionID, forceRestAPI: true }, actions)
                 .then(() => {
                     currentShippingContact = shippingContact;
 

@@ -13,10 +13,10 @@ import type { ButtonProps } from './props';
 type ExportsProps = {|
     props : ButtonProps,
     isEnabled : () => boolean,
-    facilitatorAccessToken : string
+    getFacilitatorAccessToken : () => ZalgoPromise<string>
 |};
 
-export function setupExports({ props, isEnabled, facilitatorAccessToken } : ExportsProps)  {
+export function setupExports({ props, isEnabled, getFacilitatorAccessToken } : ExportsProps)  {
     const { createOrder, onApprove, onError, onCancel, onClick, commit, intent, fundingSource, currency } = props;
 
     const fundingSources = querySelectorAll(`[${ DATA_ATTRIBUTES.FUNDING_SOURCE }]`).map(el => {
@@ -77,9 +77,7 @@ export function setupExports({ props, isEnabled, facilitatorAccessToken } : Expo
 
                     return upgradeFacilitatorAccessToken(merchantAccessToken, { buyerAccessToken, orderID });
                 },
-                getFacilitatorAccessToken: () => {
-                    return facilitatorAccessToken;
-                }
+                getFacilitatorAccessToken
             };
         }
     };

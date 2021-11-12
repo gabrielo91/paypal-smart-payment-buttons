@@ -34,75 +34,79 @@ export type OrderGetResponse = {||};
 export type OrderAuthorizeResponse = {||};
 
 type OrderAPIOptions = {|
-    facilitatorAccessToken : string,
+    getFacilitatorAccessToken : () => ZalgoPromise<string>,
     buyerAccessToken? : ?string,
     partnerAttributionID : ?string,
     forceRestAPI? : boolean
 |};
 
-export function createOrderID(order : OrderCreateRequest, { facilitatorAccessToken, partnerAttributionID } : OrderAPIOptions) : ZalgoPromise<string> {
+export function createOrderID(order : OrderCreateRequest, { getFacilitatorAccessToken, partnerAttributionID } : OrderAPIOptions) : ZalgoPromise<string> {
     getLogger().info(`rest_api_create_order_id`);
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        method:      'post',
-        url:         `${ ORDERS_API_URL }`,
-        eventName:   'v2_checkout_orders_create',
-        data:        order,
-        headers:     {
-            [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
-            [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
-        }
-    }).then((body) : string => {
-
-        const orderID = body && body.id;
-
-        if (!orderID) {
-            throw new Error(`Order Api response error:\n\n${ JSON.stringify(body, null, 4) }`);
-        }
-
-        getLogger().track({
-            [FPTI_KEY.TRANSITION]:   FPTI_TRANSITION.CREATE_ORDER,
-            [FPTI_KEY.CONTEXT_TYPE]: FPTI_CONTEXT_TYPE.ORDER_ID,
-            [FPTI_KEY.TOKEN]:        orderID,
-            [FPTI_KEY.CONTEXT_ID]:   orderID
-        });
-
-        return orderID;
-    });
-}
-
-export function getOrder(orderID : string, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
-    getLogger().info(`get_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
-    getLogger().info(`get_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
-
-    if (forceRestAPI && !getLsatUpgradeError()) {
+    return getFacilitatorAccessToken().then(facilitatorAccessToken => {
         return callRestAPI({
             accessToken: facilitatorAccessToken,
-            url:         `${ ORDERS_API_URL }/${ orderID }`,
-            eventName:   'v2_checkout_orders_get',
+            method:      'post',
+            url:         `${ ORDERS_API_URL }`,
+            eventName:   'v2_checkout_orders_create',
+            data:        order,
             headers:     {
                 [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
                 [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
             }
-        }).catch(err => {
-            const restCorrID = getErrorResponseCorrelationID(err);
-            getLogger().warn(`get_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
+        }).then((body) : string => {
 
-            return callSmartAPI({
-                accessToken: buyerAccessToken,
-                url:         `${ SMART_API_URI.ORDER }/${ orderID }`,
-                eventName:   'order_get',
+            const orderID = body && body.id;
+
+            if (!orderID) {
+                throw new Error(`Order Api response error:\n\n${ JSON.stringify(body, null, 4) }`);
+            }
+
+            getLogger().track({
+                [FPTI_KEY.TRANSITION]:   FPTI_TRANSITION.CREATE_ORDER,
+                [FPTI_KEY.CONTEXT_TYPE]: FPTI_CONTEXT_TYPE.ORDER_ID,
+                [FPTI_KEY.TOKEN]:        orderID,
+                [FPTI_KEY.CONTEXT_ID]:   orderID
+            });
+
+            return orderID;
+        });
+    });
+}
+
+export function getOrder(orderID : string, { getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
+    getLogger().info(`get_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
+    getLogger().info(`get_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
+
+    if (forceRestAPI && !getLsatUpgradeError()) {
+        return getFacilitatorAccessToken().then(facilitatorAccessToken  => {
+            return callRestAPI({
+                accessToken: facilitatorAccessToken,
+                url:         `${ ORDERS_API_URL }/${ orderID }`,
+                eventName:   'v2_checkout_orders_get',
                 headers:     {
-                    [HEADERS.CLIENT_CONTEXT]: orderID
+                    [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
+                    [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
                 }
-            }).then((res) => {
-                const smartCorrID = getResponseCorrelationID(res);
-                getLogger().info(`get_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
-                return res.data;
-            }).catch(smartErr => {
-                const smartCorrID = getErrorResponseCorrelationID(err);
-                getLogger().error(`get_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
-                throw smartErr;
+            }).catch(err => {
+                const restCorrID = getErrorResponseCorrelationID(err);
+                getLogger().warn(`get_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
+
+                return callSmartAPI({
+                    accessToken: buyerAccessToken,
+                    url:         `${ SMART_API_URI.ORDER }/${ orderID }`,
+                    eventName:   'order_get',
+                    headers:     {
+                        [HEADERS.CLIENT_CONTEXT]: orderID
+                    }
+                }).then((res) => {
+                    const smartCorrID = getResponseCorrelationID(res);
+                    getLogger().info(`get_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
+                    return res.data;
+                }).catch(smartErr => {
+                    const smartCorrID = getErrorResponseCorrelationID(err);
+                    getLogger().error(`get_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
+                    throw smartErr;
+                });
             });
         });
     }
@@ -126,45 +130,47 @@ export function isProcessorDeclineError(err : mixed) : boolean {
     }));
 }
 
-export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
+export function captureOrder(orderID : string, { getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
     getLogger().info(`capture_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
     getLogger().info(`capture_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
 
     if (forceRestAPI && !getLsatUpgradeError()) {
-        return callRestAPI({
-            accessToken: facilitatorAccessToken,
-            method:      'post',
-            eventName:   'v2_checkout_orders_capture',
-            url:         `${ ORDERS_API_URL }/${ orderID }/capture`,
-            headers:     {
-                [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
-                [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION,
-                [ HEADERS.PAYPAL_REQUEST_ID ]:      orderID
-            }
-        }).catch(err => {
-            const restCorrID = getErrorResponseCorrelationID(err);
-            getLogger().warn(`capture_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
-
-            if (isProcessorDeclineError(err)) {
-                throw err;
-            }
-
-            return callSmartAPI({
-                accessToken: buyerAccessToken,
+        return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+            return callRestAPI({
+                accessToken: facilitatorAccessToken,
                 method:      'post',
-                eventName:   'order_capture',
-                url:         `${ SMART_API_URI.ORDER }/${ orderID }/capture`,
+                eventName:   'v2_checkout_orders_capture',
+                url:         `${ ORDERS_API_URL }/${ orderID }/capture`,
                 headers:     {
-                    [HEADERS.CLIENT_CONTEXT]: orderID
+                    [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
+                    [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION,
+                    [ HEADERS.PAYPAL_REQUEST_ID ]:      orderID
                 }
-            }).then((res) => {
-                const smartCorrID = getResponseCorrelationID(res);
-                getLogger().info(`capture_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
-                return res.data;
-            }).catch(smartErr => {
-                const smartCorrID = getErrorResponseCorrelationID(err);
-                getLogger().info(`capture_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
-                throw smartErr;
+            }).catch(err => {
+                const restCorrID = getErrorResponseCorrelationID(err);
+                getLogger().warn(`capture_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
+
+                if (isProcessorDeclineError(err)) {
+                    throw err;
+                }
+
+                return callSmartAPI({
+                    accessToken: buyerAccessToken,
+                    method:      'post',
+                    eventName:   'order_capture',
+                    url:         `${ SMART_API_URI.ORDER }/${ orderID }/capture`,
+                    headers:     {
+                        [HEADERS.CLIENT_CONTEXT]: orderID
+                    }
+                }).then((res) => {
+                    const smartCorrID = getResponseCorrelationID(res);
+                    getLogger().info(`capture_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
+                    return res.data;
+                }).catch(smartErr => {
+                    const smartCorrID = getErrorResponseCorrelationID(err);
+                    getLogger().info(`capture_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
+                    throw smartErr;
+                });
             });
         });
     }
@@ -182,44 +188,46 @@ export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAc
     });
 }
 
-export function authorizeOrder(orderID : string, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
+export function authorizeOrder(orderID : string, { getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
     getLogger().info(`authorize_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
     getLogger().info(`authorize_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
 
     if (forceRestAPI && !getLsatUpgradeError()) {
-        return callRestAPI({
-            accessToken: facilitatorAccessToken,
-            method:      'post',
-            eventName:   'v2_checkout_orders_authorize',
-            url:         `${ ORDERS_API_URL }/${ orderID }/authorize`,
-            headers:     {
-                [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
-                [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
-            }
-        }).catch(err => {
-            const restCorrID = getErrorResponseCorrelationID(err);
-            getLogger().warn(`authorize_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
-
-            if (isProcessorDeclineError(err)) {
-                throw err;
-            }
-
-            return callSmartAPI({
-                accessToken: buyerAccessToken,
+        return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+            return callRestAPI({
+                accessToken: facilitatorAccessToken,
                 method:      'post',
-                eventName:   'order_authorize',
-                url:         `${ SMART_API_URI.ORDER }/${ orderID }/authorize`,
+                eventName:   'v2_checkout_orders_authorize',
+                url:         `${ ORDERS_API_URL }/${ orderID }/authorize`,
                 headers:     {
-                    [HEADERS.CLIENT_CONTEXT]: orderID
+                    [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
+                    [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
                 }
-            }).then((res) => {
-                const smartCorrID = getResponseCorrelationID(res);
-                getLogger().info(`authorize_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
-                return res.data;
-            }).catch(smartErr => {
-                const smartCorrID = getErrorResponseCorrelationID(err);
-                getLogger().info(`authorize_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
-                throw smartErr;
+            }).catch(err => {
+                const restCorrID = getErrorResponseCorrelationID(err);
+                getLogger().warn(`authorize_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
+
+                if (isProcessorDeclineError(err)) {
+                    throw err;
+                }
+
+                return callSmartAPI({
+                    accessToken: buyerAccessToken,
+                    method:      'post',
+                    eventName:   'order_authorize',
+                    url:         `${ SMART_API_URI.ORDER }/${ orderID }/authorize`,
+                    headers:     {
+                        [HEADERS.CLIENT_CONTEXT]: orderID
+                    }
+                }).then((res) => {
+                    const smartCorrID = getResponseCorrelationID(res);
+                    getLogger().info(`authorize_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
+                    return res.data;
+                }).catch(smartErr => {
+                    const smartCorrID = getErrorResponseCorrelationID(err);
+                    getLogger().info(`authorize_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
+                    throw smartErr;
+                });
             });
         });
     }
@@ -242,43 +250,46 @@ type PatchData = {|
 
 |};
 
-export function patchOrder(orderID : string, data : PatchData, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
+export function patchOrder(orderID : string, data : PatchData, { getFacilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
     getLogger().info(`patch_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
     getLogger().info(`patch_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
 
     if (forceRestAPI && !getLsatUpgradeError()) {
-        return callRestAPI({
-            accessToken: facilitatorAccessToken,
-            method:      'PATCH',
-            eventName:   'v2_checkout_orders_patch',
-            url:         `${ ORDERS_API_URL }/${ orderID }`,
-            data,
-            headers:     {
-                [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
-                [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
-            }
-        }).catch(err => {
-            const restCorrID = getErrorResponseCorrelationID(err);
-            getLogger().warn(`patch_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
-
-            return callSmartAPI({
-                accessToken: buyerAccessToken,
-                method:      'post',
-                eventName:   'order_patch',
-                url:         `${ SMART_API_URI.ORDER }/${ orderID }/patch`,
-                json:        { data: Array.isArray(data) ? { patch: data } : data },
+        return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+            return callRestAPI({
+                accessToken: facilitatorAccessToken,
+                method:      'PATCH',
+                eventName:   'v2_checkout_orders_patch',
+                url:         `${ ORDERS_API_URL }/${ orderID }`,
+                data,
                 headers:     {
-                    [HEADERS.CLIENT_CONTEXT]: orderID
+                    [ HEADERS.PARTNER_ATTRIBUTION_ID ]: partnerAttributionID || '',
+                    [ HEADERS.PREFER ]:                 PREFER.REPRESENTATION
                 }
-            }).then((res) => {
-                const smartCorrID = getResponseCorrelationID(res);
-                getLogger().info(`patch_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
-                return res.data;
-            }).catch(smartErr => {
-                const smartCorrID = getErrorResponseCorrelationID(err);
-                getLogger().info(`patch_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
-                throw smartErr;
+            }).catch(err => {
+                const restCorrID = getErrorResponseCorrelationID(err);
+                getLogger().warn(`patch_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
+
+                return callSmartAPI({
+                    accessToken: buyerAccessToken,
+                    method:      'post',
+                    eventName:   'order_patch',
+                    url:         `${ SMART_API_URI.ORDER }/${ orderID }/patch`,
+                    json:        { data: Array.isArray(data) ? { patch: data } : data },
+                    headers:     {
+                        [HEADERS.CLIENT_CONTEXT]: orderID
+                    }
+                }).then((res) => {
+                    const smartCorrID = getResponseCorrelationID(res);
+                    getLogger().info(`patch_order_smart_fallback_success`, { smartCorrID, restCorrID, orderID });
+                    return res.data;
+                }).catch(smartErr => {
+                    const smartCorrID = getErrorResponseCorrelationID(err);
+                    getLogger().info(`patch_order_smart_fallback_error`, { smartCorrID, restCorrID, orderID, err: stringifyError(smartErr) });
+                    throw smartErr;
+                });
             });
+
         });
     }
 
@@ -309,19 +320,21 @@ export type ConfirmData = {|
       }
 |};
 
-export function confirmOrderAPI(orderID : string, data : ConfirmData, { facilitatorAccessToken, partnerAttributionID } : OrderAPIOptions) : ZalgoPromise<OrderConfirmResponse> {
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        method:      'post',
-        eventName:   'order_confirm_payment_source',
-        url:         `${ ORDERS_API_URL }/${ orderID }/confirm-payment-source`,
-        data,
-        headers:     {
-            [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || '',
-            [HEADERS.PREFER]:                 PREFER.REPRESENTATION
-        }
-    }).then(({ data: orderData }) => {
-        return orderData;
+export function confirmOrderAPI(orderID : string, data : ConfirmData, { getFacilitatorAccessToken, partnerAttributionID } : OrderAPIOptions) : ZalgoPromise<OrderConfirmResponse> {
+    return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+        return callRestAPI({
+            accessToken: facilitatorAccessToken,
+            method:      'post',
+            eventName:   'order_confirm_payment_source',
+            url:         `${ ORDERS_API_URL }/${ orderID }/confirm-payment-source`,
+            data,
+            headers:     {
+                [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || '',
+                [HEADERS.PREFER]:                 PREFER.REPRESENTATION
+            }
+        }).then(({ data: orderData }) => {
+            return orderData;
+        });
     });
 }
 

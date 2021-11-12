@@ -202,7 +202,7 @@ export function setupMocks() {
                     });
                 },
                 submit: () => {
-                    return submitCardFields({ facilitatorAccessToken: 'ABCDEF12345' });
+                    return submitCardFields({ getFacilitatorAccessToken: props.getFacilitatorAccessToken });
                 }
             };
         },
@@ -1506,6 +1506,7 @@ export async function mockSetupButton(overrides? : Object = {}) : Promise<void> 
 export async function mockSetupCardFields() : Promise<void> {
     await setupCard({
         cspNonce:               '111222333',
+        clientID:               'xyz123',
         facilitatorAccessToken: 'ABCDEF12345'
     });
 }

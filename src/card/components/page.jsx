@@ -3,8 +3,10 @@
 
 import { h, render, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { memoize } from 'belter';
 
 import { getBody } from '../../lib';
+import { createAccessToken } from '../../api';
 import { setupExports, autoFocusOnFirstInput } from '../lib';
 import { CARD_FIELD_TYPE_TO_FRAME_NAME, CARD_FIELD_TYPE } from '../constants';
 import { submitCardFields } from '../interface';
@@ -19,7 +21,7 @@ type PageProps = {|
 |};
 
 function Page({ cspNonce, props } : PageProps) : mixed {
-    const { facilitatorAccessToken, style, placeholder, type, onChange, export: xport } = props;
+    const { getFacilitatorAccessToken, style, placeholder, type, onChange, export: xport } = props;
 
     const [ fieldValue, setFieldValue ] = useState();
     const [ fieldValid, setFieldValid ] = useState(false);
@@ -55,7 +57,7 @@ function Page({ cspNonce, props } : PageProps) : mixed {
 
         xport({
             submit: () => {
-                return submitCardFields({ facilitatorAccessToken });
+                return submitCardFields({ getFacilitatorAccessToken });
             }
         });
     }, [ fieldValid, fieldValue ]);
@@ -137,9 +139,11 @@ function Page({ cspNonce, props } : PageProps) : mixed {
     );
 }
 
-export function setupCard({ cspNonce, facilitatorAccessToken } : SetupCardOptions) {
+export function setupCard({ clientID, cspNonce } : SetupCardOptions) {
+    const getFacilitatorAccessToken = memoize(() => createAccessToken(clientID, { cache: false }));
+
     const props = getCardProps({
-        facilitatorAccessToken
+        getFacilitatorAccessToken
     });
 
     render(<Page cspNonce={ cspNonce } props={ props } />, getBody());

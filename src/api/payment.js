@@ -11,7 +11,7 @@ import type { ApplePayPayment } from '../payment-flows/types';
 import { callGraphQL, callRestAPI } from './api';
 
 type PaymentAPIOptions = {|
-    facilitatorAccessToken : string,
+    getFacilitatorAccessToken : () => ZalgoPromise<string>,
     buyerAccessToken? : ?string,
     partnerAttributionID : ?string
 |};
@@ -29,44 +29,46 @@ export type PaymentResponse = {|
     |}>
 |};
 
-export function createPayment(payment : PaymentCreateRequest, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
+export function createPayment(payment : PaymentCreateRequest, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
     getLogger().info(`rest_api_create_payment_id`);
+    return getFacilitatorAccessToken().then(accessToken => {
+        return callRestAPI({
+            accessToken,
+            method:      'post',
+            eventName:   'v1_payments_payment_create',
+            url:         `${ PAYMENTS_API_URL }`,
+            data:        payment,
+            headers:     {
+                [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
+            }
+        }).then(body => {
 
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        method:      'post',
-        eventName:   'v1_payments_payment_create',
-        url:         `${ PAYMENTS_API_URL }`,
-        data:        payment,
-        headers:     {
-            [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
-        }
-    }).then(body => {
+            const paymentID = body && body.id;
 
-        const paymentID = body && body.id;
+            if (!paymentID) {
+                throw new Error(`Payment Api response error:\n\n${ JSON.stringify(body, null, 4) }`);
+            }
 
-        if (!paymentID) {
-            throw new Error(`Payment Api response error:\n\n${ JSON.stringify(body, null, 4) }`);
-        }
+            getLogger().track({
+                [FPTI_KEY.TRANSITION]:   FPTI_TRANSITION.CREATE_PAYMENT,
+                [FPTI_KEY.CONTEXT_TYPE]: FPTI_CONTEXT_TYPE.PAYMENT_ID,
+                [FPTI_KEY.TOKEN]:        paymentID,
+                [FPTI_KEY.CONTEXT_ID]:   paymentID
+            });
 
-        getLogger().track({
-            [FPTI_KEY.TRANSITION]:   FPTI_TRANSITION.CREATE_PAYMENT,
-            [FPTI_KEY.CONTEXT_TYPE]: FPTI_CONTEXT_TYPE.PAYMENT_ID,
-            [FPTI_KEY.TOKEN]:        paymentID,
-            [FPTI_KEY.CONTEXT_ID]:   paymentID
+            return body;
         });
 
-        return body;
     });
 }
 
-export function createPaymentID(payment : PaymentCreateRequest, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<string> {
-    return createPayment(payment, { facilitatorAccessToken, partnerAttributionID })
+export function createPaymentID(payment : PaymentCreateRequest, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<string> {
+    return createPayment(payment, { getFacilitatorAccessToken, partnerAttributionID })
         .then(res => res.id);
 }
 
-export function createPaymentToken(payment : PaymentCreateRequest, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<string> {
-    return createPayment(payment, { facilitatorAccessToken, partnerAttributionID })
+export function createPaymentToken(payment : PaymentCreateRequest, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<string> {
+    return createPayment(payment, { getFacilitatorAccessToken, partnerAttributionID })
         .then(res => {
             if (res.links && res.links.length) {
                 for (let i = 0; i < res.links.length; i++) {
@@ -83,29 +85,33 @@ export function createPaymentToken(payment : PaymentCreateRequest, { facilitator
         });
 }
 
-export function getPayment(paymentID : string, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        eventName:   'v1_payments_payment_get',
-        url:         `${ PAYMENTS_API_URL }/${ paymentID }`,
-        headers:     {
-            [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
-        }
+export function getPayment(paymentID : string, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
+    return getFacilitatorAccessToken().then(accessToken => {
+        return callRestAPI({
+            accessToken,
+            eventName:   'v1_payments_payment_get',
+            url:         `${ PAYMENTS_API_URL }/${ paymentID }`,
+            headers:     {
+                [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
+            }
+        });
     });
 }
 
-export function executePayment(paymentID : string, payerID : string, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        method:      'post',
-        eventName:   'v1_payments_payment_execute',
-        url:         `${ PAYMENTS_API_URL }/${ paymentID }/execute`,
-        headers:     {
-            [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
-        },
-        data: {
-            payer_id: payerID
-        }
+export function executePayment(paymentID : string, payerID : string, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
+    return getFacilitatorAccessToken().then(accessToken => {
+        return callRestAPI({
+            accessToken,
+            method:      'post',
+            eventName:   'v1_payments_payment_execute',
+            url:         `${ PAYMENTS_API_URL }/${ paymentID }/execute`,
+            headers:     {
+                [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
+            },
+            data: {
+                payer_id: payerID
+            }
+        });
     });
 }
 
@@ -113,18 +119,20 @@ type PatchData = {|
     
 |};
 
-export function patchPayment(paymentID : string, data : PatchData, { facilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
+export function patchPayment(paymentID : string, data : PatchData, { getFacilitatorAccessToken, partnerAttributionID } : PaymentAPIOptions) : ZalgoPromise<PaymentResponse> {
     const patchData = Array.isArray(data) ? { patch: data } : data;
 
-    return callRestAPI({
-        accessToken: facilitatorAccessToken,
-        method:      'patch',
-        eventName:   'v1_payments_payment_patch',
-        url:         `${ PAYMENTS_API_URL }/${ paymentID }`,
-        data:        patchData,
-        headers:     {
-            [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
-        }
+    return getFacilitatorAccessToken().then(accessToken => {
+        return callRestAPI({
+            accessToken,
+            method:      'patch',
+            eventName:   'v1_payments_payment_patch',
+            url:         `${ PAYMENTS_API_URL }/${ paymentID }`,
+            data:        patchData,
+            headers:     {
+                [HEADERS.PARTNER_ATTRIBUTION_ID]: partnerAttributionID || ''
+            }
+        });
     });
 }
 

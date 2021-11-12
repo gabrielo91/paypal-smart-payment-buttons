@@ -54,14 +54,14 @@ export type CardProps = {|
     fundingEligibility : FundingEligibilityType,
     export : CardExport,
     onChange : OnChange,
-    facilitatorAccessToken : string
+    getFacilitatorAccessToken : () => ZalgoPromise<string>
 |};
 
 type GetCardPropsOptions = {|
-    facilitatorAccessToken : string
+    getFacilitatorAccessToken : () => ZalgoPromise<string>
 |};
 
-export function getCardProps({ facilitatorAccessToken } : GetCardPropsOptions) : CardProps {
+export function getCardProps({ getFacilitatorAccessToken } : GetCardPropsOptions) : CardProps {
     const xprops : CardXProps = window.xprops;
 
     const {
@@ -76,7 +76,7 @@ export function getCardProps({ facilitatorAccessToken } : GetCardPropsOptions) :
         export: xport
     } = xprops;
 
-    const props = getProps({ facilitatorAccessToken, branded });
+    const props = getProps({ getFacilitatorAccessToken, branded });
 
     return {
         ...props,
@@ -88,6 +88,6 @@ export function getCardProps({ facilitatorAccessToken } : GetCardPropsOptions) :
         fundingEligibility,
         onChange,
         export: parent ? parent.export : xport,
-        facilitatorAccessToken
+        getFacilitatorAccessToken
     };
 }

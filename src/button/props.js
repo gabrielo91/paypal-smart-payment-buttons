@@ -2,6 +2,7 @@
 
 import { COUNTRY, FUNDING, CARD, INTENT, type FundingEligibilityType } from '@paypal/sdk-constants/src';
 import type { InstallmentsFlowType } from '@paypal/installments/src/types';
+import { type ZalgoPromise } from 'zalgo-promise/src';
 
 import type { ContentType, ProxyWindow, Wallet, CheckoutFlowType, CardFormFlowType,
     ThreeDomainSecureFlowType, MenuFlowType, PersonalizationType, QRCodeType } from '../types';
@@ -40,7 +41,7 @@ export type ButtonProps = {|
     buttonSessionID : string
 |};
 
-export function getButtonProps({ facilitatorAccessToken, brandedDefault } : {| facilitatorAccessToken : string, brandedDefault : boolean | null |}) : ButtonProps {
+export function getButtonProps({ getFacilitatorAccessToken, brandedDefault } : {| getFacilitatorAccessToken : () => ZalgoPromise<string>, brandedDefault : boolean | null |}) : ButtonProps {
     const xprops : ButtonXProps = window.xprops;
 
     let {
@@ -97,7 +98,7 @@ export function getButtonProps({ facilitatorAccessToken, brandedDefault } : {| f
     }
 
     return {
-        ...getProps({ facilitatorAccessToken, branded }),
+        ...getProps({ getFacilitatorAccessToken, branded }),
         style,
         buttonSessionID,
         branded
@@ -140,7 +141,7 @@ export type ServiceData = {|
     buyerCountry : $Values<typeof COUNTRY>,
     fundingEligibility : FundingEligibilityType,
     wallet : ?Wallet,
-    facilitatorAccessToken : string,
+    getFacilitatorAccessToken : () => ZalgoPromise<string>,
     sdkMeta : string,
     buyerAccessToken : ?string,
     content : ContentType,
@@ -152,7 +153,7 @@ export type ServiceData = {|
 |};
 
 type ServiceDataOptions = {|
-    facilitatorAccessToken : string,
+    getFacilitatorAccessToken : () => ZalgoPromise<string>,
     buyerGeoCountry : $Values<typeof COUNTRY>,
     fundingEligibility : FundingEligibilityType,
     wallet : ?Wallet,
@@ -167,7 +168,7 @@ type ServiceDataOptions = {|
     personalization : PersonalizationType
 |};
 
-export function getServiceData({ facilitatorAccessToken, sdkMeta, content, buyerGeoCountry,
+export function getServiceData({ getFacilitatorAccessToken, sdkMeta, content, buyerGeoCountry,
     fundingEligibility, wallet, buyerAccessToken, serverMerchantID, eligibility, cookies, personalization } : ServiceDataOptions) : ServiceData {
 
     return {
@@ -178,7 +179,7 @@ export function getServiceData({ facilitatorAccessToken, sdkMeta, content, buyer
         sdkMeta,
         content,
         buyerAccessToken,
-        facilitatorAccessToken,
+        getFacilitatorAccessToken,
         eligibility:  eligibility ? {
             cardForm: eligibility.cardFields || false
         } : {

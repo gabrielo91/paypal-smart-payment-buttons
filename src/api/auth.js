@@ -102,32 +102,34 @@ export const clearLsatState = () => {
     lsatUpgradeError = null;
 };
 
-export function upgradeFacilitatorAccessToken(facilitatorAccessToken : string, { buyerAccessToken, orderID } : {| buyerAccessToken : string, orderID : string |}) : ZalgoPromise<void> {
+export function upgradeFacilitatorAccessToken(getFacilitatorAccessToken : () => ZalgoPromise<string>, { buyerAccessToken, orderID } : {| buyerAccessToken : string, orderID : string |}) : ZalgoPromise<void> {
     onLsatUpgradeCalled();
 
-    return callGraphQL({
-        name:    'UpgradeFacilitatorAccessToken',
-        headers: {
-            [ HEADERS.ACCESS_TOKEN ]:   buyerAccessToken,
-            [ HEADERS.CLIENT_CONTEXT ]: orderID
-        },
-        query: `
-            mutation UpgradeFacilitatorAccessToken(
-                $orderID: String!
-                $buyerAccessToken: String!
-                $facilitatorAccessToken: String!
-            ) {
-                upgradeLowScopeAccessToken(
-                    token: $orderID
-                    buyerAccessToken: $buyerAccessToken
-                    merchantLSAT: $facilitatorAccessToken
-                )
-            }
-        `,
-        variables: { facilitatorAccessToken, buyerAccessToken, orderID }
-    }).then(noop).catch(err => {
-        onLsatUpgradeError(err);
-        throw err;
+    return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+        return callGraphQL({
+            name:    'UpgradeFacilitatorAccessToken',
+            headers: {
+                [ HEADERS.ACCESS_TOKEN ]:   buyerAccessToken,
+                [ HEADERS.CLIENT_CONTEXT ]: orderID
+            },
+            query: `
+                mutation UpgradeFacilitatorAccessToken(
+                    $orderID: String!
+                    $buyerAccessToken: String!
+                    $facilitatorAccessToken: String!
+                ) {
+                    upgradeLowScopeAccessToken(
+                        token: $orderID
+                        buyerAccessToken: $buyerAccessToken
+                        merchantLSAT: $facilitatorAccessToken
+                    )
+                }
+            `,
+            variables: { facilitatorAccessToken, buyerAccessToken, orderID }
+        }).then(noop).catch(err => {
+            onLsatUpgradeError(err);
+            throw err;
+        });
     });
 }
 

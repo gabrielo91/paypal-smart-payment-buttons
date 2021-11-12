@@ -4,6 +4,7 @@
 import { extendUrl, isDevice } from 'belter/src';
 import { COUNTRY, ENV, FUNDING } from '@paypal/sdk-constants/src';
 import { getDomain } from 'cross-domain-utils/src';
+import type { ZalgoPromise } from 'zalgo-promise/src';
 
 import { WEB_CHECKOUT_URI } from '../../config';
 import { createExperiment, isIOSSafari } from '../../lib';
@@ -101,47 +102,51 @@ type NativeUrlQuery = {|
     sdkVersion : string
 |};
 
-function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : NativeUrlQuery {
+function getNativeUrlQueryParams({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : ZalgoPromise<NativeUrlQuery> {
     const { env, clientID, commit, buttonSessionID, stageHost, apiStageHost, enableFunding, merchantDomain } = props;
-    const { facilitatorAccessToken, sdkMeta, buyerCountry } = serviceData;
+    const { getFacilitatorAccessToken, sdkMeta, buyerCountry } = serviceData;
     const { sdkVersion, firebase } = config;
 
-    const webCheckoutUrl = getWebCheckoutUrl({ orderID, props, fundingSource, facilitatorAccessToken });
-    const forceEligible = isNativeOptedIn({ props });
-    const channel = isDevice() ? CHANNEL.MOBILE : CHANNEL.DESKTOP;
 
-    if (!firebase) {
-        throw new Error(`Can not find firebase config`);
-    }
-    const queryParams = {
-        channel,
-        sdkMeta,
-        sessionUID,
-        orderID,
-        facilitatorAccessToken,
-        pageUrl,
-        clientID,
-        commit:         String(commit),
-        webCheckoutUrl: isIOSSafari() ? webCheckoutUrl : '',
-        stickinessID,
-        buttonSessionID,
-        env,
-        stageHost:      stageHost || '',
-        apiStageHost:   apiStageHost || '',
-        forceEligible,
-        fundingSource,
-        enableFunding:  enableFunding.join(','),
-        domain:         merchantDomain,
-        rtdbInstanceID: firebase.databaseURL,
-        buyerCountry,
-        sdkVersion
-    };
+    return getFacilitatorAccessToken().then(facilitatorAccessToken => {
+        const webCheckoutUrl = getWebCheckoutUrl({ orderID, props, fundingSource, facilitatorAccessToken });
+        const forceEligible = isNativeOptedIn({ props });
+        const channel = isDevice() ? CHANNEL.MOBILE : CHANNEL.DESKTOP;
 
-    if (queryParams.channel === CHANNEL.DESKTOP) {
-        delete queryParams.sdkMeta;
-    }
+        if (!firebase) {
+            throw new Error(`Can not find firebase config`);
+        }
+        const queryParams = {
+            channel,
+            sdkMeta,
+            sessionUID,
+            orderID,
+            facilitatorAccessToken,
+            pageUrl,
+            clientID,
+            commit:         String(commit),
+            webCheckoutUrl: isIOSSafari() ? webCheckoutUrl : '',
+            stickinessID,
+            buttonSessionID,
+            env,
+            stageHost:      stageHost || '',
+            apiStageHost:   apiStageHost || '',
+            forceEligible,
+            fundingSource,
+            enableFunding:  enableFunding.join(','),
+            domain:         merchantDomain,
+            rtdbInstanceID: firebase.databaseURL,
+            buyerCountry,
+            sdkVersion
+        };
 
-    return queryParams;
+        if (queryParams.channel === CHANNEL.DESKTOP) {
+            delete queryParams.sdkMeta;
+        }
+
+        return queryParams;
+
+    });
 }
 
 export function getNativeUrl({ props, serviceData, config, fundingSource, sessionUID, pageUrl, orderID, stickinessID } : GetNativeUrlOptions) : string {

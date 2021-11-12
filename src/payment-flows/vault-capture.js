@@ -107,24 +107,40 @@ function getClientMetadataID({ props } : {| props : ButtonProps |}) : string {
     return clientMetadataID || sessionID;
 }
 
+const getAccessToken = ({ userIDToken, getFacilitatorAccessToken, clientAccessToken } : {| userIDToken : ?string, getFacilitatorAccessToken : () => ZalgoPromise<string>, clientAccessToken : ?string |}) : ZalgoPromise<string> => {
+    /* $FlowIgnore[incompatible-return] will not return falsy as an error is thrown */
+    return ZalgoPromise.try(() => {
+        const accessToken = userIDToken ? getFacilitatorAccessToken : clientAccessToken;
+        if (typeof accessToken === 'function') {
+            getFacilitatorAccessToken().then(token => {
+                if (!token) {
+                    throw new Error(`Client access token required for vault capture`);
+                }
+                return token;
+            });
+        } else {
+            if (!accessToken) {
+                throw new Error(`Client access token required for vault capture`);
+            }
+            return accessToken;
+        }
+    });
+};
+
 function initVaultCapture({ props, components, payment, serviceData, config } : InitOptions) : PaymentFlowInstance {
     const { createOrder, onApprove, clientAccessToken,
         enableThreeDomainSecure, partnerAttributionID, getParent, userIDToken, clientID, env } = props;
     const { ThreeDomainSecure, Installments } = components;
     const { fundingSource, paymentMethodID, button } = payment;
-    const { facilitatorAccessToken, buyerCountry } = serviceData;
+    const { getFacilitatorAccessToken, buyerCountry } = serviceData;
     const { cspNonce } = config;
 
     const clientMetadataID = getClientMetadataID({ props });
-    const accessToken = userIDToken ? facilitatorAccessToken : clientAccessToken;
 
     if (!paymentMethodID) {
         throw new Error(`Payment method id required for vault capture`);
     }
 
-    if (!accessToken) {
-        throw new Error(`Client access token required for vault capture`);
-    }
 
     const restart = () => {
         return ZalgoPromise.try(() => {
@@ -150,21 +166,23 @@ function initVaultCapture({ props, components, payment, serviceData, config } : 
     };
 
     const startPaymentFlow = (orderID, installmentPlan) => {
-        return ZalgoPromise.hash({
-            validate:        validatePaymentMethod({ accessToken, orderID, paymentMethodID, enableThreeDomainSecure, clientMetadataID, partnerAttributionID, installmentPlan }),
-            requireShipping: shippingRequired(orderID)
-        }).then(({ validate, requireShipping }) => {
-            if (requireShipping) {
-                if (fundingSource !== FUNDING.PAYPAL) {
-                    throw new Error(`Shipping address requested for ${ fundingSource } payment`);
+        return getAccessToken({ clientAccessToken, getFacilitatorAccessToken, userIDToken }).then(accessToken => {
+            return ZalgoPromise.hash({
+                validate:        validatePaymentMethod({ accessToken, orderID, paymentMethodID, enableThreeDomainSecure, clientMetadataID, partnerAttributionID, installmentPlan }),
+                requireShipping: shippingRequired(orderID)
+            }).then(({ validate, requireShipping }) => {
+                if (requireShipping) {
+                    if (fundingSource !== FUNDING.PAYPAL) {
+                        throw new Error(`Shipping address requested for ${ fundingSource } payment`);
+                    }
+
+                    return fallbackToWebCheckout();
                 }
 
-                return fallbackToWebCheckout();
-            }
-
-            const { status, body } = validate;
-            return handleValidateResponse({ ThreeDomainSecure, status, body, createOrder, getParent }).then(() => {
-                return onApprove({}, { restart });
+                const { status, body } = validate;
+                return handleValidateResponse({ ThreeDomainSecure, status, body, createOrder, getParent }).then(() => {
+                    return onApprove({}, { restart });
+                });
             });
         });
     };
@@ -184,9 +202,11 @@ function initVaultCapture({ props, components, payment, serviceData, config } : 
                     }).flush();
 
                 if (clientID && installmentsEligible) {
-                    return getSupplementalOrderInfo(orderID).then(order => {
-                        const cartAmount = order.checkoutSession.cart.amounts.total.currencyFormatSymbolISOCurrency;
-                        return initiateInstallments({ clientID, Installments, paymentMethodID, button, buyerCountry, orderID, accessToken, cartAmount, onPay: startPaymentFlow, getLogger });
+                    return getAccessToken({ clientAccessToken, getFacilitatorAccessToken, userIDToken }).then(accessToken => {
+                        return getSupplementalOrderInfo(orderID).then(order => {
+                            const cartAmount = order.checkoutSession.cart.amounts.total.currencyFormatSymbolISOCurrency;
+                            return initiateInstallments({ clientID, Installments, paymentMethodID, button, buyerCountry, orderID, accessToken, cartAmount, onPay: startPaymentFlow, getLogger });
+                        });
                     });
                 } else {
                     return startPaymentFlow(orderID);
@@ -209,7 +229,7 @@ const POPUP_OPTIONS = {
 function setupVaultMenu({ props, payment, serviceData, components, config, restart } : MenuOptions) : MenuChoices {
     const { clientAccessToken, createOrder, enableThreeDomainSecure, partnerAttributionID, sessionID, clientMetadataID, userIDToken } = props;
     const { fundingSource, paymentMethodID, button } = payment;
-    const { content, facilitatorAccessToken } = serviceData;
+    const { content, getFacilitatorAccessToken } = serviceData;
 
     if (!clientAccessToken || !paymentMethodID) {
         throw new Error(`Client access token and payment method id required`);
@@ -224,12 +244,12 @@ function setupVaultMenu({ props, payment, serviceData, components, config, resta
     };
 
     const validate = () => {
-        const accessToken = userIDToken ? facilitatorAccessToken : clientAccessToken;
-
         return ZalgoPromise.try(() => {
             return createOrder();
         }).then(orderID => {
-            return validatePaymentMethod({ accessToken, orderID, paymentMethodID, enableThreeDomainSecure, partnerAttributionID, clientMetadataID: clientMetadataID || sessionID });
+            return getAccessToken({ clientAccessToken, getFacilitatorAccessToken, userIDToken }).then(accessToken => {
+                return validatePaymentMethod({ accessToken, orderID, paymentMethodID, enableThreeDomainSecure, partnerAttributionID, clientMetadataID: clientMetadataID || sessionID });
+            });
         });
     };
 

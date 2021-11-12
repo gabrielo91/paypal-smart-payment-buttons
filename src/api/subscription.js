@@ -55,7 +55,7 @@ function createRequest(accessToken : string, subscriptionPayload : SubscriptionC
     });
 }
 
-export function createSubscription(accessToken : string, subscriptionPayload : SubscriptionCreateRequest, { partnerAttributionID, merchantID, clientID } : SubscriptionOptions) : ZalgoPromise<string> {
+export function createSubscription(getFacilitatorAccessToken : () => ZalgoPromise<string>, subscriptionPayload : SubscriptionCreateRequest, { partnerAttributionID, merchantID, clientID } : SubscriptionOptions) : ZalgoPromise<string> {
     getLogger().info(`rest_api_create_subscription_id`);
 
     if (!subscriptionPayload) {
@@ -71,12 +71,14 @@ export function createSubscription(accessToken : string, subscriptionPayload : S
         });
     }
 
-    if (!accessToken) {
-        throw new Error(`Access token not passed`);
-    }
+    return getFacilitatorAccessToken().then(accessToken => {
+        if (!accessToken) {
+            throw new Error(`Access token not passed`);
+        }
 
-    const eventName = 'v1_billing_subscriptions_create';
-    return createRequest(accessToken, subscriptionPayload, partnerAttributionID, eventName);
+        const eventName = 'v1_billing_subscriptions_create';
+        return createRequest(accessToken, subscriptionPayload, partnerAttributionID, eventName);
+    });
 }
 
 // Revise Subscription API request
@@ -102,7 +104,7 @@ function reviseRequest(accessToken : string, subscriptionID : string, subscripti
     });
 }
 
-export function reviseSubscription(accessToken : string, subscriptionID : string, subscriptionPayload : ?SubscriptionCreateRequest, { partnerAttributionID, merchantID, clientID } : SubscriptionOptions) : ZalgoPromise<string> {
+export function reviseSubscription(getFacilitatorAccessToken : () => ZalgoPromise<string>, subscriptionID : string, subscriptionPayload : ?SubscriptionCreateRequest, { partnerAttributionID, merchantID, clientID } : SubscriptionOptions) : ZalgoPromise<string> {
     getLogger().info(`rest_api_create_subscription_id`);
 
     if (!subscriptionID) {
@@ -122,12 +124,14 @@ export function reviseSubscription(accessToken : string, subscriptionID : string
         });
     }
 
-    if (!accessToken) {
-        throw new Error(`Access token not passed`);
-    }
+    return getFacilitatorAccessToken().then(accessToken => {
+        if (!accessToken) {
+            throw new Error(`Access token not passed`);
+        }
 
-    const eventName = 'v1_billing_subscriptions_revise_create';
-    return reviseRequest(accessToken, subscriptionID, subscriptionPayload, partnerAttributionID, eventName);
+        const eventName = 'v1_billing_subscriptions_revise_create';
+        return reviseRequest(accessToken, subscriptionID, subscriptionPayload, partnerAttributionID, eventName);
+    });
 }
 
 type SubscriptionAPICredentials = {|

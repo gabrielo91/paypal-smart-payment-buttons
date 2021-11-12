@@ -2,6 +2,7 @@
 
 export type SetupCardOptions = {|
     cspNonce : string,
+    clientID : string,
     facilitatorAccessToken : string
 |};
 

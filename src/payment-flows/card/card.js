@@ -43,7 +43,7 @@ function isCardFieldPaymentEligible({ payment } : IsPaymentEligibleOptions) : bo
 }
 
 function initCardField({ serviceData } : InitOptions) : PaymentFlowInstance {
-    const { facilitatorAccessToken } = serviceData;
+    const { getFacilitatorAccessToken } = serviceData;
 
     const click = () => {
         if (!getCardFields()) {
@@ -52,7 +52,7 @@ function initCardField({ serviceData } : InitOptions) : PaymentFlowInstance {
     };
     
     const start = () => {
-        return submitCardFields({ facilitatorAccessToken });
+        return submitCardFields({ getFacilitatorAccessToken });
     };
 
     const close = promiseNoop;

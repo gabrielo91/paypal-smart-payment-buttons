@@ -17,13 +17,13 @@ export type XOnAuthDataType = {|
 export type OnAuth = (params : XOnAuthDataType) => ZalgoPromise<string | void>;
 
 type GetOnAuthOptions = {|
-    facilitatorAccessToken : string,
+    getFacilitatorAccessToken : () => ZalgoPromise<string>,
     createOrder : CreateOrder,
     createSubscription : ?CreateSubscription,
     clientID : string
 |};
 
-export function getOnAuth({ facilitatorAccessToken, createOrder, createSubscription, clientID } : GetOnAuthOptions) : OnAuth {
+export function getOnAuth({ getFacilitatorAccessToken, createOrder, createSubscription, clientID } : GetOnAuthOptions) : OnAuth {
     const upgradeLSAT = LSAT_UPGRADE_EXCLUDED_MERCHANTS.indexOf(clientID) === -1;
 
     return ({ accessToken } : XOnAuthDataType) => {
@@ -38,7 +38,7 @@ export function getOnAuth({ facilitatorAccessToken, createOrder, createSubscript
                                 return accessToken;
                             }
 
-                            return upgradeFacilitatorAccessToken(facilitatorAccessToken, { buyerAccessToken: accessToken, orderID });
+                            return upgradeFacilitatorAccessToken(getFacilitatorAccessToken, { buyerAccessToken: accessToken, orderID });
                         })
                         .then(() => {
                             getLogger().info(`upgrade_lsat_success`);
