@@ -7,7 +7,7 @@ import { FPTI_KEY } from '@paypal/sdk-constants/src';
 import { applepay, checkout, cardField, cardForm, native, brandedVaultCard, vaultCapture, walletCapture, popupBridge, type Payment, type PaymentFlow } from '../payment-flows';
 import { getLogger, sendBeacon } from '../lib';
 import { FPTI_TRANSITION, BUYER_INTENT, FPTI_CONTEXT_TYPE, FPTI_CUSTOM_KEY } from '../constants';
-import { createAccessToken, updateButtonClientConfig } from '../api';
+import { updateButtonClientConfig } from '../api';
 import { getConfirmOrder } from '../props/confirmOrder';
 import { enableVaultSetup } from '../middleware';
 
@@ -72,7 +72,7 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
     const buttonLabel = props.style?.label;
 
     return ZalgoPromise.try(() => {
-        const { merchantID, personalization, fundingEligibility, buyerCountry } = serviceData;
+        const { merchantID, personalization, fundingEligibility, buyerCountry, getFacilitatorAccessToken } = serviceData;
         const { clientID, onClick, createOrder, env, vault, partnerAttributionID, userExperienceFlow, buttonSessionID, intent, currency,
             clientAccessToken, createBillingAgreement, createSubscription, commit, disableFunding, disableCard, userIDToken, enableNativeCheckout  } = props;
         
@@ -108,14 +108,9 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                 [FPTI_CUSTOM_KEY.INFO_MSG]: enableNativeCheckout ? 'tester' : ''
             }).flush();
         
-        const accessTokenPromise = ZalgoPromise.try(() => {
-            return createAccessToken(clientID, { cache: false })
-                .then(facilitatorAccessToken => facilitatorAccessToken);
-        });
-
         const clickPromise = click
             ? ZalgoPromise.try(() => {
-                return accessTokenPromise.then(click);
+                return getFacilitatorAccessToken().then(click);
             })
             : ZalgoPromise.resolve();
         clickPromise.catch(noop);
@@ -170,12 +165,9 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                         return;
                     }
 
-                    return createAccessToken(clientID, { cache: false })
-                        .then(facilitatorAccessToken => {
-                            return getConfirmOrder({
-                                orderID, payload: confirmOrderPayload, partnerAttributionID
-                            }, { facilitatorAccessToken });
-                        });
+                    return getConfirmOrder({
+                        orderID, payload: confirmOrderPayload, partnerAttributionID
+                    }, { getFacilitatorAccessToken });
                 });
             });
 
