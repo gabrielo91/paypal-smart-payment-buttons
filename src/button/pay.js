@@ -108,11 +108,7 @@ export function initiatePaymentFlow({ payment, serviceData, config, components, 
                 [FPTI_CUSTOM_KEY.INFO_MSG]: enableNativeCheckout ? 'tester' : ''
             }).flush();
         
-        const clickPromise = click
-            ? ZalgoPromise.try(() => {
-                return getFacilitatorAccessToken().then(click);
-            })
-            : ZalgoPromise.resolve();
+        const clickPromise = click ? ZalgoPromise.try(click) : ZalgoPromise.resolve();
         clickPromise.catch(noop);
 
         return ZalgoPromise.try(() => {
