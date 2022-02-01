@@ -76,7 +76,6 @@ export function setupLogger({ env, sessionID, clientID, sdkCorrelationID, buyerC
             [FPTI_KEY.USER_AGENT]:             window.navigator && window.navigator.userAgent,
             [FPTI_KEY.CONTEXT_CORRID]:         sdkCorrelationID,
             [FPTI_KEY.TIMESTAMP]:              Date.now().toString(),
-            [FPTI_KEY.TIME]:                   Date.now().toString(),
             [FPTI_KEY.CHOSEN_FUNDING]:         fundingSource
         };
     });
