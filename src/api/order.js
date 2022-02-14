@@ -128,6 +128,13 @@ export function isProcessorDeclineError(err : mixed) : boolean {
     }));
 }
 
+export function isUnprocessableEntity(err : mixed) : boolean {
+    // $FlowFixMe
+    return Boolean(err?.response?.body?.data?.details?.some(detail => {
+        return detail.issue === ORDER_API_ERROR.UNPROCESSABLE_ENTITY;
+    }));
+}
+
 export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
     getLogger().info(`capture_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);
     getLogger().info(`capture_order_lsat_upgrade_${ getLsatUpgradeError() ? 'errored' : 'did_not_error' }`, { err: stringifyError(getLsatUpgradeError()) });
@@ -147,7 +154,7 @@ export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAc
             const restCorrID = getErrorResponseCorrelationID(err);
             getLogger().warn(`capture_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
 
-            if (isProcessorDeclineError(err)) {
+            if (isProcessorDeclineError(err) || isUnprocessableEntity(err)) {
                 throw err;
             }
 
