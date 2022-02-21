@@ -99,7 +99,7 @@ describe('contingency cases', () => {
         });
     });
     
-    it.only('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
+    it('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
         return await wrapPromise(async ({ expect }) => {
 
             const orderID = generateOrderID();
@@ -140,7 +140,7 @@ describe('contingency cases', () => {
                 const captureOrderMock = getRestfulCaptureOrderApiMock({
                     status: 422,
                     data:   {
-                        contingency: 'UNPROCESSABLE_ENTITY',
+                        name: 'UNPROCESSABLE_ENTITY',
                         data:        {
                             details: [
                                 {
