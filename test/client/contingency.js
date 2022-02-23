@@ -91,16 +91,38 @@ describe('contingency cases', () => {
                 return checkoutInstance;
             }));
 
+            window.xprops.onError = (err) => {
+                console.log('we are on on err');
+                console.log(err);
+            };
+
+            let error;
+
+
             createButtonHTML();
 
             await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
 
-            await clickButton(FUNDING.PAYPAL);
+            try {
+                // window.xprops.onError = expect('onError');
+                window.xprops.onError = mockAsyncProp(expect('onError', (err) => {
+                    console.log('gb:log handling error:', err);
+                }));
+                await clickButton(FUNDING.PAYPAL);
+            } catch (err) {
+                console.log('we are on on err 2');
+                error = err;
+                
+            }
+
+            console.log('finishing error');
+
+            // await clickButton(FUNDING.PAYPAL);
         });
     });
     
-    it('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
-        return await wrapPromise(async ({ expect }) => {
+    it.only('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
+        return await wrapPromise(async ({ expect, expectError }) => {
 
             const orderID = generateOrderID();
             const payerID = 'YYYYYYYYYY';
@@ -112,7 +134,7 @@ describe('contingency cases', () => {
                 });
             }));
 
-            let onApprove = expect('onApprove', async (data, actions) => {
+            const onApprove = expect('onApprove', async (data, actions) => {
 
                 if (data.orderID !== orderID) {
                     throw new Error(`Expected orderID to be ${ orderID }, got ${ data.orderID }`);
@@ -122,26 +144,11 @@ describe('contingency cases', () => {
                     throw new Error(`Expected payerID to be ${ payerID }, got ${ data.payerID }`);
                 }
 
-                onApprove = expect('onApprove2', async (data2) => {
-                    if (data2.orderID !== orderID) {
-                        throw new Error(`Expected orderID to be ${ orderID }, got ${ data.orderID }`);
-                    }
-
-                    if (data2.payerID !== payerID) {
-                        throw new Error(`Expected payerID to be ${ payerID }, got ${ data.payerID }`);
-                    }
-
-                    const captureOrderMock2 = getRestfulCaptureOrderApiMock();
-                    captureOrderMock2.expectCalls();
-                    await actions.order.capture();
-                    captureOrderMock2.done();
-                });
-
                 const captureOrderMock = getRestfulCaptureOrderApiMock({
                     status: 422,
                     data:   {
                         name: 'UNPROCESSABLE_ENTITY',
-                        data:        {
+                        data: {
                             details: [
                                 {
                                     issue: 'DUPLICATE_INVOICE_ID'
@@ -155,6 +162,17 @@ describe('contingency cases', () => {
                 actions.order.capture();
                 captureOrderMock.done();
             });
+            
+            const onError = (err) => {
+                if (err !== 'error') {
+                    throw new Error(`Expected errors to match`);
+                }
+            };
+
+            window.xprops.onError = (err) => {
+                console.log('we are on on err');
+                console.log(err);
+            };
 
             window.xprops.onApprove = mockAsyncProp(expect('onApprove', (data, actions) => onApprove(data, actions)));
 
@@ -179,9 +197,29 @@ describe('contingency cases', () => {
                 return checkoutInstance;
             }));
 
+            await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
+
+            // try {
+            //     // window.xprops.onError = mockAsyncProp(expect('onError'));
+            //     window.xprops.onError = mockAsyncProp(onError(err));
+            //     await clickButton(FUNDING.PAYPAL);
+            // } catch (err) {
+            //     console.log('error ------------------');
+            // }
+
+            // await clickButton(FUNDING.PAYPAL);
+
             createButtonHTML();
+            // window.xprops.onError = expect('onError');
+
+            // window.xprops.onError = mockAsyncProp(expect('onError', (err) => {
+            //     if (err !== '') {
+            //         throw new Error(`Expected errors to match`);
+            //     }
+            // }));
 
             await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
+
 
             await clickButton(FUNDING.PAYPAL);
         });

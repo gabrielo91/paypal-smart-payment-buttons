@@ -7,7 +7,7 @@ import { INTENT, SDK_QUERY_KEYS, FPTI_KEY } from '@paypal/sdk-constants/src';
 
 import { type OrderResponse, type PaymentResponse, getOrder, captureOrder, authorizeOrder, patchOrder,
     getSubscription, activateSubscription, type SubscriptionResponse, getPayment, executePayment, patchPayment,
-    getSupplementalOrderInfo, isProcessorDeclineError } from '../api';
+    getSupplementalOrderInfo, isProcessorDeclineError, isUnprocessableEntity } from '../api';
 import { FPTI_TRANSITION, FPTI_CONTEXT_TYPE, LSAT_UPGRADE_EXCLUDED_MERCHANTS } from '../constants';
 import { unresolvedPromise, getLogger } from '../lib';
 import { ENABLE_PAYMENT_API } from '../config';
@@ -100,13 +100,19 @@ const redirect = (url) => {
     return redir(url, window.top);
 };
 
-const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>) : ZalgoPromise<T> => {
+const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError) : ZalgoPromise<T> => {
+
+    if (isUnprocessableEntity(err)) {
+        return onError(err);
+    }
+
     if (isProcessorDeclineError(err)) {
         return restart().then(unresolvedPromise);
     }
 
     throw err;
 };
+
 
 type OrderActionOptions = {|
     orderID : string,
@@ -117,10 +123,11 @@ type OrderActionOptions = {|
     facilitatorAccessToken : string,
     buyerAccessToken : ?string,
     partnerAttributionID : ?string,
-    forceRestAPI : boolean
+    forceRestAPI : boolean,
+    onError : OnError
 |};
 
-function buildOrderActions({ intent, orderID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI } : OrderActionOptions) : OrderActions {
+function buildOrderActions({ intent, orderID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError } : OrderActionOptions) : OrderActions {
     const get = memoize(() => {
         return getOrder(orderID, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI });
     });
@@ -133,7 +140,10 @@ function buildOrderActions({ intent, orderID, restart, facilitatorAccessToken, b
         return captureOrder(orderID, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI })
             .finally(get.reset)
             .finally(capture.reset)
-            .catch(err => handleProcessorError<OrderResponse>(err, restart));
+            .catch(err => {
+                console.log('gb:log handling error');
+                return handleProcessorError<OrderResponse>(err, restart, onError);
+            });
     });
 
     const authorize = memoize(() => {
@@ -218,11 +228,12 @@ type ApproveOrderActionOptions = {|
     facilitatorAccessToken : string,
     buyerAccessToken : ?string,
     partnerAttributionID : ?string,
-    forceRestAPI : boolean
+    forceRestAPI : boolean,
+    onError : ?OnError
 |};
 
-function buildXApproveOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI } : ApproveOrderActionOptions) : XOnApproveOrderActionsType {
-    const order = buildOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI });
+function buildXApproveOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError } : ApproveOrderActionOptions) : XOnApproveOrderActionsType {
+    const order = buildOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError });
     const payment = buildPaymentActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI });
 
     return {
@@ -357,7 +368,7 @@ export function getOnApproveOrder({ intent, onApprove = getDefaultOnApproveOrder
                 paymentID = paymentID || (supplementalData && supplementalData.checkoutSession && supplementalData.checkoutSession.cart && supplementalData.checkoutSession.cart.paymentId);
 
                 const data = { orderID, payerID, paymentID, billingToken, facilitatorAccessToken, authCode };
-                const actions = buildXApproveOrderActions({ orderID, paymentID, payerID, intent, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI });
+                const actions = buildXApproveOrderActions({ orderID, paymentID, payerID, intent, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError });
 
                 return onApprove(data, actions).catch(err => {
                     return ZalgoPromise.try(() => {
