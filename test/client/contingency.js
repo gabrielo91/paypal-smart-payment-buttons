@@ -91,38 +91,16 @@ describe('contingency cases', () => {
                 return checkoutInstance;
             }));
 
-            window.xprops.onError = (err) => {
-                console.log('we are on on err');
-                console.log(err);
-            };
-
-            let error;
-
-
             createButtonHTML();
 
             await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
 
-            try {
-                // window.xprops.onError = expect('onError');
-                window.xprops.onError = mockAsyncProp(expect('onError', (err) => {
-                    console.log('gb:log handling error:', err);
-                }));
-                await clickButton(FUNDING.PAYPAL);
-            } catch (err) {
-                console.log('we are on on err 2');
-                error = err;
-                
-            }
-
-            console.log('finishing error');
-
-            // await clickButton(FUNDING.PAYPAL);
+            await clickButton(FUNDING.PAYPAL);
         });
     });
     
-    it.only('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
-        return await wrapPromise(async ({ expect, expectError }) => {
+    it('should render a button, click the button, and render checkout, then pass onApprove callback to the parent with actions.order.capture and fails due to DUPLICATE_INVOICE_ID', async () => {
+        return await wrapPromise(async ({ expect }) => {
 
             const orderID = generateOrderID();
             const payerID = 'YYYYYYYYYY';
@@ -164,17 +142,17 @@ describe('contingency cases', () => {
             });
             
             const onError = (err) => {
-                if (err !== 'error') {
-                    throw new Error(`Expected errors to match`);
+                if (err.response.body.data.details[0].issue !== 'DUPLICATE_INVOICE_ID') {
+                    throw new Error(`Expected errors to match, got ${ err.data.details[0].issue } expected to be: DUPLICATE_INVOICE_ID`);
                 }
             };
 
-            window.xprops.onError = (err) => {
-                console.log('we are on on err');
-                console.log(err);
-            };
 
             window.xprops.onApprove = mockAsyncProp(expect('onApprove', (data, actions) => onApprove(data, actions)));
+            window.xprops.onError = mockAsyncProp(expect('onError', (err) => {
+                onError(err);
+            }));
+
 
             mockFunction(window.paypal, 'Checkout', expect('Checkout', ({ original: CheckoutOriginal, args: [ props ] }) => {
                 props.onAuth({ accessToken });
@@ -197,29 +175,9 @@ describe('contingency cases', () => {
                 return checkoutInstance;
             }));
 
-            await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
-
-            // try {
-            //     // window.xprops.onError = mockAsyncProp(expect('onError'));
-            //     window.xprops.onError = mockAsyncProp(onError(err));
-            //     await clickButton(FUNDING.PAYPAL);
-            // } catch (err) {
-            //     console.log('error ------------------');
-            // }
-
-            // await clickButton(FUNDING.PAYPAL);
-
             createButtonHTML();
-            // window.xprops.onError = expect('onError');
-
-            // window.xprops.onError = mockAsyncProp(expect('onError', (err) => {
-            //     if (err !== '') {
-            //         throw new Error(`Expected errors to match`);
-            //     }
-            // }));
 
             await mockSetupButton({ merchantID: [ 'XYZ12345' ], fundingEligibility: DEFAULT_FUNDING_ELIGIBILITY });
-
 
             await clickButton(FUNDING.PAYPAL);
         });

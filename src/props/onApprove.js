@@ -98,12 +98,14 @@ const redirect = (url) => {
     }
 
     return redir(url, window.top);
+
+
 };
 
-const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError) : ZalgoPromise<T> => {
+const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError : OnError) : ZalgoPromise<T> => {
 
     if (isUnprocessableEntity(err)) {
-        return onError(err);
+        return onError(err).then(unresolvedPromise);
     }
 
     if (isProcessorDeclineError(err)) {
@@ -141,7 +143,6 @@ function buildOrderActions({ intent, orderID, restart, facilitatorAccessToken, b
             .finally(get.reset)
             .finally(capture.reset)
             .catch(err => {
-                console.log('gb:log handling error');
                 return handleProcessorError<OrderResponse>(err, restart, onError);
             });
     });
@@ -154,7 +155,7 @@ function buildOrderActions({ intent, orderID, restart, facilitatorAccessToken, b
         return authorizeOrder(orderID, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI })
             .finally(get.reset)
             .finally(authorize.reset)
-            .catch(err => handleProcessorError<OrderResponse>(err, restart));
+            .catch(err => handleProcessorError<OrderResponse>(err, restart, onError));
     });
 
     const patch = (data = {}) => {
@@ -176,9 +177,10 @@ type PaymentActionOptions = {|
     buyerAccessToken : ?string,
     partnerAttributionID : ?string,
     forceRestAPI : boolean
+,    onError : OnError
 |};
 
-function buildPaymentActions({ intent, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID } : PaymentActionOptions) : ?PaymentActions {
+function buildPaymentActions({ intent, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, onError } : PaymentActionOptions) : ?PaymentActions {
 
     if (!paymentID) {
         return;
@@ -200,7 +202,7 @@ function buildPaymentActions({ intent, paymentID, payerID, restart, facilitatorA
         return executePayment(paymentID, payerID, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID })
             .finally(get.reset)
             .finally(execute.reset)
-            .catch(err => handleProcessorError<PaymentResponse>(err, restart));
+            .catch(err => handleProcessorError<PaymentResponse>(err, restart, onError));
     });
 
     const patch = (data = {}) => {
@@ -229,12 +231,12 @@ type ApproveOrderActionOptions = {|
     buyerAccessToken : ?string,
     partnerAttributionID : ?string,
     forceRestAPI : boolean,
-    onError : ?OnError
+    onError : OnError
 |};
 
 function buildXApproveOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError } : ApproveOrderActionOptions) : XOnApproveOrderActionsType {
     const order = buildOrderActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError });
-    const payment = buildPaymentActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI });
+    const payment = buildPaymentActions({ intent, orderID, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI, onError });
 
     return {
         order,
