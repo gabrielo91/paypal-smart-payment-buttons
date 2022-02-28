@@ -127,7 +127,7 @@ export function isProcessorDeclineError(err : mixed) : boolean {
 }
 
 
-export function isUnprocessableEntity(err : mixed) : boolean {
+export function isUnprocessableEntityError(err : mixed) : boolean {
     // $FlowFixMe
     return Boolean(err?.response?.body?.data?.details?.some(detail => {
         return  detail.issue === ORDER_API_ERROR.DUPLICATE_INVOICE_ID;
@@ -154,7 +154,7 @@ export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAc
             const restCorrID = getErrorResponseCorrelationID(err);
             getLogger().warn(`capture_order_call_rest_api_error`, { restCorrID, orderID, err: stringifyError(err) });
 
-            if (isProcessorDeclineError(err) || isUnprocessableEntity(err)) {
+            if (isProcessorDeclineError(err) || isUnprocessableEntityError(err)) {
                 throw err;
             }
 

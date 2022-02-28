@@ -7,7 +7,7 @@ import { INTENT, SDK_QUERY_KEYS, FPTI_KEY } from '@paypal/sdk-constants/src';
 
 import { type OrderResponse, type PaymentResponse, getOrder, captureOrder, authorizeOrder, patchOrder,
     getSubscription, activateSubscription, type SubscriptionResponse, getPayment, executePayment, patchPayment,
-    getSupplementalOrderInfo, isProcessorDeclineError, isUnprocessableEntity } from '../api';
+    getSupplementalOrderInfo, isProcessorDeclineError, isUnprocessableEntityError } from '../api';
 import { FPTI_TRANSITION, FPTI_CONTEXT_TYPE, LSAT_UPGRADE_EXCLUDED_MERCHANTS } from '../constants';
 import { unresolvedPromise, getLogger } from '../lib';
 import { ENABLE_PAYMENT_API } from '../config';
@@ -104,7 +104,7 @@ const redirect = (url) => {
 
 const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError : OnError) : ZalgoPromise<T> => {
 
-    if (isUnprocessableEntity(err)) {
+    if (isUnprocessableEntityError(err)) {
         return onError(err).then(unresolvedPromise);
     }
 
@@ -176,8 +176,8 @@ type PaymentActionOptions = {|
     facilitatorAccessToken : string,
     buyerAccessToken : ?string,
     partnerAttributionID : ?string,
-    forceRestAPI : boolean
-,    onError : OnError
+    forceRestAPI : boolean,
+    onError : OnError
 |};
 
 function buildPaymentActions({ intent, paymentID, payerID, restart, facilitatorAccessToken, buyerAccessToken, partnerAttributionID, onError } : PaymentActionOptions) : ?PaymentActions {
