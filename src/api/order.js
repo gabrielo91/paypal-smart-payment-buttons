@@ -130,10 +130,9 @@ export function isProcessorDeclineError(err : mixed) : boolean {
 export function isUnprocessableEntityError(err : mixed) : boolean {
     // $FlowFixMe
     return Boolean(err?.response?.body?.data?.details?.some(detail => {
-        return  detail.issue === ORDER_API_ERROR.DUPLICATE_INVOICE_ID;
+        return detail.issue === ORDER_API_ERROR.DUPLICATE_INVOICE_ID;
     }));
 }
-
 
 export function captureOrder(orderID : string, { facilitatorAccessToken, buyerAccessToken, partnerAttributionID, forceRestAPI = false } : OrderAPIOptions) : ZalgoPromise<OrderResponse> {
     getLogger().info(`capture_order_lsat_upgrade_${ getLsatUpgradeCalled() ? 'called' : 'not_called' }`);

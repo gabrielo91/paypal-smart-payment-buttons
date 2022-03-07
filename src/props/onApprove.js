@@ -98,8 +98,6 @@ const redirect = (url) => {
     }
 
     return redir(url, window.top);
-
-
 };
 
 const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError : OnError) : ZalgoPromise<T> => {
