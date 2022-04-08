@@ -103,7 +103,10 @@ const redirect = (url) => {
 const handleProcessorError = <T>(err : mixed, restart : () => ZalgoPromise<void>, onError : OnError) : ZalgoPromise<T> => {
 
     if (isUnprocessableEntityError(err)) {
-        err.message = JSON.stringify(err.response);
+        if (err && err.response) {
+            // $FlowFixMe
+            err.message = JSON.stringify(err.response) || err.message;
+        }
         return onError(err).then(unresolvedPromise);
     }
 
